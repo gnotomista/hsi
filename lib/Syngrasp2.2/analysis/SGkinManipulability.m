@@ -55,7 +55,7 @@
 %  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 %  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-function kinmanipulability = SGkinManipulability(Gamma,in_col,Wu,Wz)
+function [kinmanipulability,ueig,zeig] = SGkinManipulability(Gamma,in_col,Wu,Wz)
 
 Gamma_z = [Gamma.zrco Gamma.zrh Gamma.zrrb];
 Gamma_u = [Gamma.uco Gamma.uh Gamma.urb];
