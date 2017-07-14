@@ -2,12 +2,18 @@ clc
 clear
 close all
 
-while true
+plot_stuff = false;
+dt = 0.01;
+N_robots = 12;
+data_for_pca = [];
+
+for g = 1 : 100
     
-    close all
+    clc
+    fprintf('grasping  # %d\n',g)
     
     % generate polygonal object to grasp
-    N_verteces = 10;
+    N_verteces = 5 + randi(20);
     x = rand(N_verteces,1);
     y = rand(N_verteces,1);
     th = atan2(y-mean(y), x-mean(x));
@@ -24,25 +30,27 @@ while true
     G = centroid(P);
     
     % arrange robot on a circle centered at the object centroid
-    N_robots = 12;
     r = 1.5*max(sqrt(sum((P-G).^2,1)));
     p0 = G + r*[cos(linspace(0,N_robots/(N_robots+1)*2*pi,N_robots));
         sin(linspace(0,N_robots/(N_robots+1)*2*pi,N_robots))];
     
     % move robots towards object centroid
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% plot stuff
-    figure
-    axis equal
-    axis([G(1)-1.1*r G(1)+1.1*r G(2)-1.1*r G(2)+1.1*r])
-    hold on
-    plot(x,y,'o')
-    hO = plot([xo; xo(1)], [yo; yo(1)]);
-    % plot(xc, yc);
-    plot(M(1), M(2), 'k+')
-    plot(G(1), G(2), 'd')
-    hR = plot(p0(1,:), p0(2,:), 'x');
+    if plot_stuff
+        close all
+        figure
+        axis equal
+        axis([G(1)-1.1*r G(1)+1.1*r G(2)-1.1*r G(2)+1.1*r])
+        hold on
+        plot(x,y,'o')
+        hO = plot([xo; xo(1)], [yo; yo(1)]);
+        % plot(xc, yc);
+        plot(M(1), M(2), 'k+')
+        plot(G(1), G(2), 'd')
+        hR = plot(p0(1,:), p0(2,:), 'x');
+    end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    dt = 0.001;
+    
     p = p0;
     in = zeros(N_robots,1);
     out = zeros(N_robots,1);
@@ -56,6 +64,15 @@ while true
                         p(:,i) = p(:,i) + (G-p(:,i))*dt;
                     end
                 end
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% record data
+                for i = 1 : N_robots
+                    if i == 1
+                        data_for_pca(i,end+1) = norm(p(:,i)-p(:,end));
+                    else
+                        data_for_pca(i,end) = norm(p(:,i)-p(:,i-1));
+                    end
+                end
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 if all(in)
                     state = 'release';
                 end
@@ -66,22 +83,37 @@ while true
                         p(:,i) = p(:,i) + (p0(:,i)-p(:,i))*dt;
                     end
                 end
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% record data
+                for i = 2 : N_robots
+                    if i == 1
+                        data_for_pca(i,end+1) = norm(p(:,i)-p(:,end));
+                    else
+                        data_for_pca(i,end) = norm(p(:,i)-p(:,i-1));
+                    end
+                end
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 if all(out)
                     break
                 end
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% plot stuff
-        set(hR, 'XData', p(1,:), 'YData', p(2,:))
-        if all(in)
-            set(hO, 'LineWidth', 2)
+        if plot_stuff
+            set(hR, 'XData', p(1,:), 'YData', p(2,:))
+            if all(in)
+                set(hO, 'LineWidth', 2)
+            end
+            drawnow limitrate
+            pause(0.001)
         end
-        drawnow limitrate
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
     
-    pause(0.5)
-    
+    if plot_stuff
+        pause(0.5)
+    end
 end
+
+v = pca(data_for_pca');
 
 function G = centroid(P)
 n = size(P,2);
