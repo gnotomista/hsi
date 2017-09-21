@@ -2,7 +2,7 @@ clc
 clear
 close all
 
-plot_stuff = false;
+plot_stuff = true;
 dt = 0.01;
 N_robots = 12;
 data_for_pca = [];
@@ -74,7 +74,8 @@ for g = 1 : 100
                 end
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 if all(in)
-                    state = 'release';
+                    % state = 'release';
+                    break % break instead, no need to release
                 end
             case 'release'
                 for i = 1 : N_robots

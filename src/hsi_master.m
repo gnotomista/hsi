@@ -2,8 +2,6 @@ clc
 close all
 clear
 
-run('../lib/Syngrasp2.2/install.m')
-
 hand = SGparadigmatic;
 [qm, S] = SGsantelloSynergies;
 hand = SGdefineSynergies(hand,S,qm);

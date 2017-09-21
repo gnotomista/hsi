@@ -1,3 +1,6 @@
 [submodule "robotarium-matlab-simulator"]
 	path = robotarium-matlab-simulator
 	url = https://github.com/robotarium/robotarium-matlab-simulator.git
+[submodule "lib/robotarium-matlab-simulator"]
+	path = lib/robotarium-matlab-simulator
+	url = https://github.com/robotarium/robotarium-matlab-simulator
