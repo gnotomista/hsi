@@ -45,9 +45,9 @@ F{5} = [];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Thumb
 DHpars{1}=[
-    -pi/2 0 0 0 ; 
+    pi/2 0 0 0 ; 
     0 25 0 0 ;            
-    pi/2 15 0 0 ;         
+    0 15 0 0 ;         
     0 10 0 0 ];          
 
 base{1} = [0 -1 0 -37;
@@ -116,5 +116,10 @@ for i = 1:length(DHpars)
 end
 
 newHand = SGmakeHand(F);
+
+newHand.qmin = [0 -15 0 -10 0 0    0 -5 0 0  0   -5  0   0 0   -5 0   0   0  -5]'*(pi/180);
+newHand.qmax = [90 90 80 80 5 20 110 90 5 20 110 90 10 -30 120 90 15 -30 135 90]'*(pi/180);
+newHand.limit = [newHand.qmin newHand.qmax];
+
 newHand.type = 'Paradigmatic';
 
