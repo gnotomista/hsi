@@ -1,13 +1,27 @@
-clc
-clear
-close all
+function [v,L] = grasp_polygon(n_robots,L)
 
-plot_stuff = true;
-dt = 0.01;
-N_robots = 12;
-data_for_pca = [];
+% define some constants
+DT = 0.01;
+N_GRASPING = 100;
+% and flags
+PLOT_STUFF = false;
 
-for g = 1 : 100
+% find number of 'generalized joints' (based on the defined topology)
+idcs_all = find(L==-1);
+idcs = [];
+for i = 1 : length(idcs_all)
+    [I,J] = ind2sub(size(L),idcs_all(i));
+    if J > I
+        idcs(end+1) = idcs_all(i);
+    end
+end
+n_joints = length(idcs);
+
+% initialize loop variables
+data_for_pca = double.empty(n_joints,0);
+
+% simulate graspings to collect data
+for g = 1 : N_GRASPING
     
     clc
     fprintf('grasping  # %d\n',g)
@@ -31,12 +45,11 @@ for g = 1 : 100
     
     % arrange robot on a circle centered at the object centroid
     r = 1.5*max(sqrt(sum((P-G).^2,1)));
-    p0 = G + r*[cos(linspace(0,N_robots/(N_robots+1)*2*pi,N_robots));
-        sin(linspace(0,N_robots/(N_robots+1)*2*pi,N_robots))];
+    p0 = G + r*[cos(linspace(0,n_robots/(n_robots+1)*2*pi,n_robots));
+        sin(linspace(0,n_robots/(n_robots+1)*2*pi,n_robots))];
     
-    % move robots towards object centroid
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% plot stuff
-    if plot_stuff
+    % plot stuff %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    if PLOT_STUFF
         close all
         figure
         axis equal
@@ -49,56 +62,64 @@ for g = 1 : 100
         plot(G(1), G(2), 'd')
         hR = plot(p0(1,:), p0(2,:), 'x');
     end
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+    % move robots towards object centroid with a proportional controller
     p = p0;
-    in = zeros(N_robots,1);
-    out = zeros(N_robots,1);
+    in = zeros(n_robots,1);
+    out = zeros(n_robots,1);
     state = 'grasp';
     while true
         switch state
             case 'grasp'
-                for i = 1 : N_robots
+                for i = 1 : n_robots
                     if ~in(i)
                         in(i) = inpolygon(p(1,i), p(2,i), P(1,:), P(2,:));
-                        p(:,i) = p(:,i) + (G-p(:,i))*dt;
+                        p(:,i) = p(:,i) + (G-p(:,i))*DT;
                     end
                 end
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% record data
-                for i = 1 : N_robots
-                    if i == 1
-                        data_for_pca(i,end+1) = norm(p(:,i)-p(:,end));
-                    else
-                        data_for_pca(i,end) = norm(p(:,i)-p(:,i-1));
+                % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+                for i = 1 : n_robots
+                    neighbors = topological_neighbors(L, i);
+                    for j = neighbors
+                        if j > i
+                            if i == 1
+                                data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(p(:,i)-p(:,end));
+                            else
+                                data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(p(:,i)-p(:,i-1));
+                            end
+                        end
+                        % data_for_pca
+                        % pause(0.01)
                     end
                 end
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 if all(in)
                     % state = 'release';
                     break % break instead, no need to release
                 end
             case 'release'
-                for i = 1 : N_robots
+                for i = 1 : n_robots
                     if ~out(i)
                         out(i) = (norm(p(:,i)-p0(:,i)) < 2e-3);
-                        p(:,i) = p(:,i) + (p0(:,i)-p(:,i))*dt;
+                        p(:,i) = p(:,i) + (p0(:,i)-p(:,i))*DT;
                     end
                 end
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% record data
-                for i = 2 : N_robots
+                % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                for i = 2 : n_robots
                     if i == 1
                         data_for_pca(i,end+1) = norm(p(:,i)-p(:,end));
                     else
                         data_for_pca(i,end) = norm(p(:,i)-p(:,i-1));
                     end
                 end
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 if all(out)
                     break
                 end
         end
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% plot stuff
-        if plot_stuff
+        % plot stuff %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        if PLOT_STUFF
             set(hR, 'XData', p(1,:), 'YData', p(2,:))
             if all(in)
                 set(hO, 'LineWidth', 2)
@@ -106,15 +127,17 @@ for g = 1 : 100
             drawnow limitrate
             pause(0.001)
         end
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
     
-    if plot_stuff
+    if PLOT_STUFF
         pause(0.5)
     end
 end
 
 v = pca(data_for_pca');
+
+end
 
 function G = centroid(P)
 n = size(P,2);
