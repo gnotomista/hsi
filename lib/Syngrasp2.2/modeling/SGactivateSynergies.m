@@ -67,7 +67,7 @@ if(size(z,1) ~= size(hand.S,2))
 end
     
 if(size(z,1) == 1)
-    q = q';
+    q = hand.q';
 end
     
     q_0 = hand.q;
