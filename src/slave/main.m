@@ -5,11 +5,16 @@ close all
 % define some constants
 LOAD = true;
 N_ROBOTS = 10;
-SYNERGY_TO_VISUALIZE = 2;
+GRASP_ROTATE = 'grasp'; % or 'rotate'
+SYNERGY_TO_VISUALIZE = 1;
 
-% collect data & PCA, or load pre-generated stuff
+% collect data & do PCA, or load pre-generated stuff
 if LOAD
-    load('pc.mat')
+    if strcmp(GRASP_ROTATE, 'grasp')
+        load('pc_grasping.mat')
+    elseif strcmp(GRASP_ROTATE, 'rotate')
+        load('pc_rotating.mat')
+    end
     N = size(L,1);
 else
     N = N_ROBOTS;
@@ -22,8 +27,12 @@ else
             end
         end
     end
-    % collect 
-    v = grasp_polygon(N,L);
+    % collect
+    if strcmp(GRASP_ROTATE, 'grasp')
+        v = grasp_polygon(N,L);
+    elseif strcmp(GRASP_ROTATE, 'rotate')
+        v = rotate_polygon(N,L);
+    end
 end
 
 robotarium = initialize_robotarium(N,L);
