@@ -1,7 +1,7 @@
 function robotarium = initialize_robotarium(N,L)
 
 rb = RobotariumBuilder();
-r = rb.set_number_of_agents(N).set_save_data(false).build();
+r = rb.set_number_of_agents(N).set_save_data(false).set_show_figure(true).build();
 
 linearVelocityGain = 1;
 angularVelocityGain = pi/2;

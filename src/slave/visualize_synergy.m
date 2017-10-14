@@ -25,6 +25,8 @@ for i = 1 : size(L,1)
     for j = 1 : size(L,2)
         if L(i,j) == -1
             if j > i
+                size(pc)
+                find(idcs==sub2ind(size(L),i,j))
                 weights(i,j) = pc(idcs==sub2ind(size(L),i,j));
             else
                 weights(i,j) = pc(idcs==sub2ind(size(L),j,i));
