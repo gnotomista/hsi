@@ -1,19 +1,23 @@
 classdef Slave
-    %SLAVE Summary of this class goes here
-    %   Detailed explanation goes here
+    %SLAVE Models the slave of a synergy-based grasping architecture by a multi-robot system
+    %   _
     
     properties
+        
         N
         L
         robotarium_container
         pc
+        rot_pc
         weights
         EPS_DX
         FORMATION_CONTROL_GAIN
         MAX_ITER
+        
     end
     
     methods
+        
         function this = Slave(N, L)
             assert(size(L,1)==size(L,2), 'Laplacian must be square')
             assert(N==size(L,1), 'Number of robots N must equal dimension of Laplacian')
@@ -22,15 +26,14 @@ classdef Slave
             this.robotarium_container = initialize_robotarium(N, L);
             this.EPS_DX = 0.05;
             this.FORMATION_CONTROL_GAIN = 10;
-            this.MAX_ITER = 1000;
+            this.MAX_ITER = 200;
             
             % load synergies
-            % grasping
-            load('pc_grasping_slave.mat')
-            this.pc(:,1) = v(:,1);
-            % rotating
-            % load('pc_rotating.mat')
-            % this.pc(:,2) = v(:,2);
+            load('slave_synergies.mat')
+            this.pc = synergies;
+            % TEST: load rotational synergies
+            load('slave_rotational_synergies.mat')
+            this.rot_pc = rotational_synergies;
             
             % build up weight matrix for formation control
             this.weights = cell(size(this.pc,2),1);
@@ -48,7 +51,8 @@ classdef Slave
                     end
                 end
             end
-        end
+        end % Slave (constructor)
+        
         function move_synergy(this, syn_id, syn_val)
             dx = ones(2,this.N);
             iter = 0;
@@ -64,13 +68,33 @@ classdef Slave
                     end
                 end
                 
-                dx = this.robotarium_container.si_to_uni_dyn(dx, x);
+                du = this.robotarium_container.si_to_uni_dyn(dx, x);
                 
-                this.robotarium_container.r.set_velocities(1:this.N, dx);
+                this.robotarium_container.r.set_velocities(1:this.N, du);
                 this.robotarium_container.r.step();
             end
-        end
-    end
+        end % move_synergy
+        
+        function move_synergy_rotation(this, syn_id, syn_val)
+            dx = ones(2,this.N);
+            iter = 0;
+            while any(diag(dx'*dx) > this.EPS_DX) && iter < this.MAX_ITER
+                iter = iter + 1;
+                x = this.robotarium_container.r.get_poses();
+                
+                %th_val = syn_val*this.rot_pc(syn_id,:);
+                %x_goal = [cos(th_val); sin(th_val)];
+                x_goal = syn_val*reshape(this.rot_pc(syn_id,:),2,this.N);
+                
+                dx = this.robotarium_container.si_pos_ctrl(x(1:2, :), x_goal);
+                du = this.robotarium_container.si_to_uni_dyn(dx, x);
+                
+                this.robotarium_container.r.set_velocities(1:this.N, du);
+                this.robotarium_container.r.step();
+            end
+        end % move_synergy_rotation
+        
+    end % methods
     
-end
+end % class
 

@@ -18,11 +18,9 @@ for i = 1 : size(L,1)
 end
 
 s = Slave(N_ROBOTS, L);
-s.move_synergy(SYN_ID, 0.5)
 % for t = 0 : 10000
 %     s.move_synergy(SYN_ID, (1-cos(2*pi*0.001*t))/2)
 % end
-
-
-
-
+for t = 0 : 10000
+    s.move_synergy_rotation(SYN_ID, (1-cos(2*pi*0.001*t))/2)
+end

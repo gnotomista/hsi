@@ -1,4 +1,4 @@
-function [v,L] = rotate_polygon(n_robots,L,varargin)
+function [v,L] = rotate_polygon2(n_robots,L,varargin)
 
 p = inputParser;
 addOptional(p,'DT',0.01)
@@ -7,7 +7,7 @@ addOptional(p,'PLOT_STUFF',false)
 p.parse(varargin{:})
 
 DT = p.Results.DT;
-N_GRASPING = p.Results.N_GRASPING;
+N_GRASPING = p.Results.N_ROTATION;
 PLOT_STUFF = p.Results.PLOT_STUFF;
 
 % find number of 'generalized joints' (based on the defined topology)
@@ -22,7 +22,7 @@ end
 n_joints = length(idcs);
 
 % initialize loop variables
-data_for_pca = double.empty(n_joints,0);
+data_for_pca = double.empty(2*n_robots,0);
 
 % simulate graspings to collect data
 for g = 1 : N_GRASPING
@@ -97,22 +97,11 @@ for g = 1 : N_GRASPING
     pt = zeros(size(p));
     for th = linspace(0, 2*pi, 360)
         Pt = G + rot(th) * (P - G);
-        pt = G + rot(th) * (p - G);
+        pt_for_pca = rot(th) * (p - G);
+        pt = pt_for_pca + G;        
         % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        for i = 1 : n_robots
-            neighbors = topological_neighbors(L, i);
-            for j = neighbors
-                if j > i
-                    if i == 1
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(pt(:,i)-pt(:,end));
-                    else
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(pt(:,i)-pt(:,i-1));
-                    end
-                end
-                % data_for_pca
-                % pause(0.01)
-            end
-        end
+        % data_for_pca(:,end+1) = atan2(pt(2,:), pt(1,:))';
+        data_for_pca(:,end+1) = pt(:);
         % plot stuff %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         if PLOT_STUFF
             set(hR, 'XData', pt(1,:), 'YData', pt(2,:))

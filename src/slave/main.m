@@ -3,10 +3,11 @@ clear
 close all
 
 % define some constants
-LOAD = true;
-N_ROBOTS = 10;
-GRASP_ROTATE = 'grasp'; % or 'rotate'
+LOAD = false;
+N_ROBOTS = 6;
+GRASP_ROTATE = 'rotate'; % 'grasp' or 'rotate'
 SYNERGY_TO_VISUALIZE = 1;
+OVERWRITE_MAT = true;
 
 % collect data & do PCA, or load pre-generated stuff
 if LOAD
@@ -31,10 +32,17 @@ else
     if strcmp(GRASP_ROTATE, 'grasp')
         v = grasp_polygon(N,L);
     elseif strcmp(GRASP_ROTATE, 'rotate')
-        v = rotate_polygon(N,L);
+        % v = rotate_polygon(N,L);
+        v = rotate_polygon2(N,L,'PLOT_STUFF',false);
     end
 end
 
-robotarium = initialize_robotarium(N,L);
+if OVERWRITE_MAT
+    delete slave_rotational_synergies.mat
+    rotational_synergies = v;
+    save('slave_rotational_synergies','rotational_synergies')
+end
 
-visualize_synergy(robotarium,v,SYNERGY_TO_VISUALIZE);
+% robotarium = initialize_robotarium(N,L);
+
+% visualize_synergy(robotarium,v,SYNERGY_TO_VISUALIZE);

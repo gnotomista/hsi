@@ -6,6 +6,7 @@ r = rb.set_number_of_agents(N).set_save_data(false).set_show_figure(true).build(
 linearVelocityGain = 1;
 angularVelocityGain = pi/2;
 
+si_pos_ctrl = create_si_position_controller('XVelocityGain', 2, 'YVelocityGain', 2);
 si_barrier_cert = create_si_barrier_certificate('SafetyRadius', 0.06);
 si_to_uni_dyn = create_si_to_uni_mapping2('LinearVelocityGain', linearVelocityGain, ...
     'AngularVelocityLimit', angularVelocityGain);
@@ -20,6 +21,7 @@ for i = 1 : length(idcs_all)
 end
 
 robotarium.r = r;
+robotarium.si_pos_ctrl= si_pos_ctrl;
 robotarium.si_barrier_cert = si_barrier_cert;
 robotarium.si_to_uni_dyn = si_to_uni_dyn;
 robotarium.L = L;
