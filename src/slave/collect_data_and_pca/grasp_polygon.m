@@ -1,13 +1,13 @@
-function [v,L] = grasp_polygon(n_robots,L,varargin)
+function [v,mu] = grasp_polygon(n_robots,L,varargin)
 
 p = inputParser;
 addOptional(p,'DT',0.01)
-addOptional(p,'N_GRASPING',100)
+addOptional(p,'N_DATA',100)
 addOptional(p,'PLOT_STUFF',false)
 p.parse(varargin{:})
 
 DT = p.Results.DT;
-N_GRASPING = p.Results.N_GRASPING;
+N_DATA = p.Results.N_DATA;
 PLOT_STUFF = p.Results.PLOT_STUFF;
 
 % find number of 'generalized joints' (based on the defined topology)
@@ -25,7 +25,7 @@ n_joints = length(idcs);
 data_for_pca = double.empty(n_joints,0);
 
 % simulate graspings to collect data
-for g = 1 : N_GRASPING
+for g = 1 : N_DATA
     
     clc
     fprintf('grasping  # %d\n',g)
@@ -71,56 +71,16 @@ for g = 1 : N_GRASPING
     % move robots towards object centroid with a proportional controller
     p = p0;
     in = zeros(n_robots,1);
-    out = zeros(n_robots,1);
-    state = 'grasp';
     while true
-        switch state
-            case 'grasp'
-                for i = 1 : n_robots
-                    if ~in(i)
-                        in(i) = inpolygon(p(1,i), p(2,i), P(1,:), P(2,:));
-                        p(:,i) = p(:,i) + (G-p(:,i))*DT;
-                    end
-                end
-                % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
-                for i = 1 : n_robots
-                    neighbors = topological_neighbors(L, i);
-                    for j = neighbors
-                        if j > i
-                            if i == 1
-                                data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(p(:,i)-p(:,end));
-                            else
-                                data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(p(:,i)-p(:,i-1));
-                            end
-                        end
-                        % data_for_pca
-                        % pause(0.01)
-                    end
-                end
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                if all(in)
-                    % state = 'release';
-                    break % break instead, no need to release
-                end
-            case 'release'
-                for i = 1 : n_robots
-                    if ~out(i)
-                        out(i) = (norm(p(:,i)-p0(:,i)) < 2e-3);
-                        p(:,i) = p(:,i) + (p0(:,i)-p(:,i))*DT;
-                    end
-                end
-                % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                for i = 2 : n_robots
-                    if i == 1
-                        data_for_pca(i,end+1) = norm(p(:,i)-p(:,end));
-                    else
-                        data_for_pca(i,end) = norm(p(:,i)-p(:,i-1));
-                    end
-                end
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                if all(out)
-                    break
-                end
+        % move robots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        for i = 1 : n_robots
+            if ~in(i)
+                in(i) = inpolygon(p(1,i), p(2,i), P(1,:), P(2,:));
+                p(:,i) = p(:,i) + (G-p(:,i))*DT;
+            end
+        end
+        if all(in)
+            break
         end
         % plot stuff %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         if PLOT_STUFF
@@ -130,8 +90,23 @@ for g = 1 : N_GRASPING
             end
             drawnow limitrate
             pause(0.001)
+        end        
+        % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        for i = 1 : n_robots
+            neighbors = topological_neighbors(L, i);
+            for j = neighbors
+                if j > i
+                    if i == 1
+                        data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(p(:,i)-p(:,j));
+                    else
+                        data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(p(:,i)-p(:,j));
+                    end
+                end
+                % data_for_pca
+                % pause(0.01)
+            end
         end
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
     
     if PLOT_STUFF
@@ -139,7 +114,7 @@ for g = 1 : N_GRASPING
     end
 end
 
-v = pca(data_for_pca');
+[v,~,~,~,~,mu] = pca(data_for_pca');
 
 end
 

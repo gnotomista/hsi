@@ -1,6 +1,6 @@
 %% variables
 t = 0:0.1:4;
-[a,s] = arclenght(t(end),1,t');
+[a,s] = arclength(t(end),1,t');
 s = -[s;1-s];
 
 %% Master
