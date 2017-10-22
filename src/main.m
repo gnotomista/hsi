@@ -1,10 +1,15 @@
+clc
+clear
+close all
+
 %% variables
+SYN_ID = 1;
 t = 0:0.1:4;
 [a,s] = arclength(t(end),1,t');
 s = -[s;1-s];
 
 %% Master
-figure(1)
+figure('units','normalized','position',[.05 .2 .45 .6])
 T = eye(4);
 qm = [-1.2826    -1.7596    0.4405   -0.0916  ...
        0.4533     0.3465    1.1698    0.8165  ...
@@ -17,17 +22,9 @@ Syn = load('S.mat');
 hand = SGdefineSynergies(hand,Syn.S,qm);
 
 %% Slave
-N_ROBOTS = 6;
-SYN_ID = 1;
-L = diag(2*ones(N_ROBOTS,1));
-for i = 1 : size(L,1)
-    for j = 1 : size(L,2)
-        if i ~= j  % i == mod(j-1,N_ROBOTS) || i == mod(j+1,N_ROBOTS) || j == mod(i-1,N_ROBOTS) || j == mod(i+1,N_ROBOTS)
-            L(i,j) = -1;
-        end
-    end
-end
-slave = Slave(N_ROBOTS, L);
+slave = Slave();
+set(slave.robotarium_container.r.figure_handle,...
+    'units','normalized','position',[.5 .2 .45 .6])
 
 %% 
 i = 1;
