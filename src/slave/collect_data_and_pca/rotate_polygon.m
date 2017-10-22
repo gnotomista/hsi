@@ -1,13 +1,13 @@
-function [v,L] = rotate_polygon(n_robots,L,varargin)
+function [v,mu] = rotate_polygon(n_robots,L,varargin)
 
 p = inputParser;
 addOptional(p,'DT',0.01)
-addOptional(p,'N_GRASPING',100)
+addOptional(p,'N_DATA',100)
 addOptional(p,'PLOT_STUFF',false)
 p.parse(varargin{:})
 
 DT = p.Results.DT;
-N_GRASPING = p.Results.N_GRASPING;
+N_DATA = p.Results.N_DATA;
 PLOT_STUFF = p.Results.PLOT_STUFF;
 
 % find number of 'generalized joints' (based on the defined topology)
@@ -25,7 +25,7 @@ n_joints = length(idcs);
 data_for_pca = double.empty(n_joints,0);
 
 % simulate graspings to collect data
-for g = 1 : N_GRASPING
+for g = 1 : N_DATA
     
     clc
     fprintf('rotating  # %d\n',g)
@@ -94,19 +94,20 @@ for g = 1 : N_GRASPING
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
     
-    pt = zeros(size(p));
-    for th = linspace(0, 2*pi, 360)
-        Pt = G + rot(th) * (P - G);
+    for th = linspace(0, pi/2, 40)
+        %Pt = G + rot(th) * (P - G);
+        Pt = P;
         pt = G + rot(th) * (p - G);
+        pt(1,:) = p(1,:);
         % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for i = 1 : n_robots
             neighbors = topological_neighbors(L, i);
             for j = neighbors
                 if j > i
                     if i == 1
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(pt(:,i)-pt(:,end));
+                        data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(pt(:,i)-pt(:,j));
                     else
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(pt(:,i)-pt(:,i-1));
+                        data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(pt(:,i)-pt(:,j));
                     end
                 end
                 % data_for_pca
@@ -129,7 +130,7 @@ for g = 1 : N_GRASPING
     end
 end
 
-v = pca(data_for_pca');
+[v,~,~,~,~,mu] = pca(data_for_pca');
 
 end
 

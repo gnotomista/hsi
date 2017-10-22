@@ -1,4 +1,4 @@
-function [a,s] = arclenght(tf,tc,t)
+function [a,s] = arclength(tf,tc,t)
 a = -1/(tc*tc - tf*tc);
 s = zeros(size(t,1),1);
 for i = 1:size(t)
