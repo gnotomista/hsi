@@ -13,7 +13,7 @@ qm = [-1.2826    -1.7596    0.4405   -0.0916  ...
       -0.5283     0.3394    1.1613    0.7675]';
 hand = SGparadigmatic(T);
 hand = SGmoveHand(hand,qm);
-Syn = load('S.mat');                    
+Syn = load('synergiesGraspObj.mat');                    
 hand = SGdefineSynergies(hand,Syn.S,qm);
 
 %% Slave
