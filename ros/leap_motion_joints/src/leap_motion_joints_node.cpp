@@ -12,6 +12,15 @@ using namespace Leap;
 
 #define RECORD 0
 
+int kbhit()
+{
+    struct timeval tv = { 0L, 0L };
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
+}
+
 class SampleListener : public Listener {
 public:
   virtual void onInit(const Controller&);
@@ -24,7 +33,9 @@ public:
   virtual void onDeviceChange(const Controller&);
   virtual void onServiceConnect(const Controller&);
   virtual void onServiceDisconnect(const Controller&);
+  bool publishing;
   leap_motion_joints::JointPosition jntPos;
+
 private:
 };
 
@@ -57,7 +68,7 @@ void SampleListener::onFrame(const Controller& controller) {
   // Get the most recent frame and report some basic information
   const Frame frame = controller.frame();
   std::vector<double> data;
-  system("clear");
+//  system("clear");
   HandList hands = frame.hands();
 
   for (HandList::const_iterator hl = hands.begin(); hl != hands.end(); ++hl) {
@@ -68,7 +79,7 @@ void SampleListener::onFrame(const Controller& controller) {
       const FingerList fingers = hand.fingers();
       for (FingerList::const_iterator fl = fingers.begin(); fl != fingers.end(); ++fl) {
           const Finger finger = *fl;
-          std::cout << std::setw(12) <<  fingerNames[finger.type()];
+          //std::cout << std::setw(12) <<  fingerNames[finger.type()];
           for (int b = 0; b < 4; ++b) {
 
             Bone::Type boneType = static_cast<Bone::Type>(b);
@@ -85,7 +96,7 @@ void SampleListener::onFrame(const Controller& controller) {
 
               if (b == 1)
               {
-                std::cout << std::fixed << std::setw(12) << yaw << " " << std::setw(12) << pitch;
+                //std::cout << std::fixed << std::setw(12) << yaw << " " << std::setw(12) << pitch;
                 data.push_back(yaw);
                 data.push_back(pitch);
 #if RECORD
@@ -94,7 +105,7 @@ void SampleListener::onFrame(const Controller& controller) {
             }
             else 
             {
-                std::cout << std::setw(12) << pitch ;
+                //std::cout << std::setw(12) << pitch ;
                 data.push_back(pitch);
 #if RECORD 
                 outputFile << pitch << " ";
@@ -103,13 +114,13 @@ void SampleListener::onFrame(const Controller& controller) {
             }
         }
     }
-    std::cout << "\n";  
 }
 jntPos.values = data;
 #if RECORD
 outputFile << "\n";
 outputFile.close();
-#endif    
+#endif
+publishing = true;
 }
 }
 
@@ -139,6 +150,7 @@ void SampleListener::onServiceDisconnect(const Controller& controller) {
   std::cout << "Service Disconnected" << std::endl;
 }
 
+
 int main (int argc, char** argv){
 
     ros::init(argc,argv,"leap_motion_joints");
@@ -148,16 +160,59 @@ int main (int argc, char** argv){
     Controller controller;
     controller.addListener(listener);
     ros::Publisher leapJointsPub = n.advertise<leap_motion_joints::JointPosition>("leap_motion_joints", 1);
+    listener.publishing = false;
     
+    std::vector<float> offset(20,0.0);
+    char cNum[20] ;
+    int i=0;
+    
+    std::ifstream infile;
+    infile.open ("offset.txt", std::ifstream::in);
+    if (infile.is_open())
+    {
+        offset.clear();
+        while (infile.good())
+        {
+            infile.getline(cNum, 256, ',');
+            offset.push_back(atof(cNum));
+            i++ ;
+        }
+        infile.close();
+        std::cout << "offset loaded!" << std::endl;
+    }
+    else
+        std::cout << "unable to load offset!" << std::endl;
+
+
     ros::Rate loop_rate(10);
     while (ros::ok())
     {
-        if (listener.jntPos.values.size() != 0)
+        if (kbhit())
+        {
+            if (listener.publishing)
+            {
+                std::ofstream outputFile("offset.txt");
+                if (outputFile.is_open())
+                {
+                    std::copy(listener.jntPos.values.begin(), listener.jntPos.values.end(), std::ostream_iterator<float>(outputFile , ", ")); 
+                    outputFile.flush();
+                }
+                std::cout << "offset saved!" << std::endl;
+            }
+            else
+                std::cout << "offset not saved!" << std::endl;
+            break; //check get character
+        }
+
+        if (listener.publishing){
+            std::transform (listener.jntPos.values.begin(), listener.jntPos.values.end(), offset.begin(), listener.jntPos.values.begin(), std::minus<float>());
             leapJointsPub.publish(listener.jntPos);
+            listener.publishing = false;
+        }
 
         loop_rate.sleep();
         ros::spinOnce();
     }
-    
+
     return 0;
 }
