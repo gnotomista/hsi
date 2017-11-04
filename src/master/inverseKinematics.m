@@ -1,4 +1,4 @@
-function [e,hand] = inverse_kinematics(hand,pose)
+function [e,hand] = inverseKinematics(hand,pose)
 
 deltaT = 0.001;
 hand_ = hand;

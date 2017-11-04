@@ -63,7 +63,7 @@ for i = 1: length(hand.F)
         % plot the joint
         SGplotjoint(Thand,scalef/2);
         % extract the homogeneous transformation matrix for each link
-        Ttr = SGDHmatrix(hand.F{i}.DHpars(j,:));
+        Ttr = SGDHMatrix(hand.F{i}.DHpars(j,:));
         pold = Thand(1:3,4);
         Thand = Thand*Ttr;
         pnew = Thand(1:3,4);
