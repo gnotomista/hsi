@@ -57,20 +57,14 @@ object.G = object.Gtilde*hand.H';
  
 % define the stiffness matrices
 % 
- Ks = eye(nl);
- Kq = eye(nq);
- Kz = eye(nz);
- 
-object = SGcontactStiffness(object,Ks);
-hand = SGjointStiffness(hand,Kq);
-hand = SGsynergyStiffness(hand,Kz);
-  
-% 
- %%%%% constant synergy matrix
- Ksz = zeros(nz,nz);
- Kjq = zeros(nq,nq);
- Kju = zeros(nq,nd);
+Kc = 1000*eye(nl); %%5000 N/m
+object = SGcontactStiffness(object,Kc);
 
+Kq = 50*eye(nq); %% 500 N/rad
+hand = SGjointStiffness(hand,Kq);
+
+Kz= eye(nz); %%5000 N/m
+hand = SGsynergyStiffness(hand,Kz);
 
 delta_zr = [1,0,0,0,0,0]';
 variation = SGquasistatic(hand,object,delta_zr);
@@ -84,7 +78,6 @@ kinellips = kinmanipulability.kinellips;
 [r,c] = size(kinellips.u1);
 for i = 1:r
     for j = 1:c
-
         u1t(i,j) = kinellips.u1(i,j)+object.center(1);
         u2t(i,j) = kinellips.u2(i,j)+object.center(2);
         u3t(i,j) = kinellips.u3(i,j)+object.center(3);
@@ -94,7 +87,6 @@ end
 % draw the kinematic manipulability ellipsoid in the workspace
 % 
  hold on
- axis([-60 30 40 120 -100 50])
  mesh(u1t,u2t,u3t)
 
 % [hand,obj] = SGcloseHandSynergies(hand,obj,[1,0]',0.11);
