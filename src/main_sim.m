@@ -22,7 +22,7 @@ Syn = load('synergiesGraspObj.mat');
 hand = SGdefineSynergies(hand,Syn.S,qm);
 
 %% Slave
-slave = Slave();
+slave = Slave('slave/mat_files/alldata');
 set(slave.robotarium_container.r.figure_handle,...
     'units','normalized','position',[.5 .2 .45 .6])
 

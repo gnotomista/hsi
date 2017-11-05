@@ -23,7 +23,7 @@ hand = SGmoveHand(hand,qm);
 %H(1:3,4) = [0,90,-50];
 %obj = SGcube(H,65,50,30);
 
-hand = SGaddFtipContact(hand,1,1:3);
+hand = SGaddFtipContact(hand,1,1:5);
 [hand,object] = SGmakeObject(hand); 
 
 figure
@@ -46,7 +46,7 @@ object.G = object.Gtilde*hand.H';
 [nd]= size(object.G,1);
 % 
 % choose the synergy indexes
- syn_index = 1:6;
+ syn_index = 1:2;
 % 
 % 
 % choose the corresponding columns
@@ -54,19 +54,18 @@ object.G = object.Gtilde*hand.H';
  hand.S = S_rid;
  nz = size(hand.S,2);
 
- 
 % define the stiffness matrices
 % 
 Kc = 1000*eye(nl); %%5000 N/m
 object = SGcontactStiffness(object,Kc);
 
-Kq = 50*eye(nq); %% 500 N/rad
+Kq = 5000*eye(nq); %% 500 N/rad
 hand = SGjointStiffness(hand,Kq);
 
 Kz= eye(nz); %%5000 N/m
 hand = SGsynergyStiffness(hand,Kz);
 
-delta_zr = [1,0,0,0,0,0]';
+delta_zr = [1,0.0]';
 variation = SGquasistatic(hand,object,delta_zr);
 linMap = SGquasistaticMaps(hand,object);
 rbmotion = SGrbMotions(hand,object);
