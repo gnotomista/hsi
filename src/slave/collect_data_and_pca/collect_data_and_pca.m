@@ -21,9 +21,9 @@ for i = 1 : size(Lapl,1)
 end
 % collect
 if strcmp(GRASP_ROTATE, 'grasp')
-    [synergies_vectors, synergies_mean] = grasp_polygon(N_ROBOTS,Lapl);%,'DT',0.01,'N_DATA',100,'PLOT_STUFF',false);
+    [synergies_vectors, synergies_mean] = grasp_polygon('../mat_files/graph_topology');%,'DT',0.01,'N_DATA',100,'PLOT_STUFF',false);
 elseif strcmp(GRASP_ROTATE, 'rotate')
-    [synergies_vectors, synergies_mean] = rotate_polygon(N_ROBOTS,Lapl,'PLOT_STUFF',false);
+    [synergies_vectors, synergies_mean] = rotate_polygon('../mat_files/graph_topology','PLOT_STUFF',false);
 end
 
 % delete old mat ...

@@ -5,13 +5,13 @@ classdef Slave < handle
     properties
         N
         L
+        to
         pc
         mu
         robotarium_container
     end % public properties
     
     properties (Access=private)
-        idcs
         weights_mean
         weights
         EPS_DX
@@ -20,8 +20,8 @@ classdef Slave < handle
     end % private properties
     
     methods
-        function this = Slave()
-            this.load_synergies();
+        function this = Slave(all_mat_file_name)
+            this.load_all(all_mat_file_name);
             this.initialize_robotarium();
             this.build_up_weights();
             
@@ -41,7 +41,7 @@ classdef Slave < handle
                     dx(:, i) = zeros(2,1);
                     for j = topological_neighbors(this.L, i)
                         dx(:, i) = dx(:, i) + ...
-                            this.FORMATION_CONTROL_GAIN * (norm(x(1:2, i) - x(1:2, j))^2 - (this.weights_mean{syn_id}(i, j) + syn_val*this.weights{syn_id}(i, j))^2) * (x(1:2, j) - x(1:2, i));
+                            this.FORMATION_CONTROL_GAIN * (norm(x(1:2, i) - x(1:2, j))^2 - (this.weights_mean(i, j) + syn_val*this.weights{syn_id}(i, j))^2) * (x(1:2, j) - x(1:2, i));
                     end
                 end
                 
@@ -54,49 +54,36 @@ classdef Slave < handle
     end % public methods
     
     methods (Access=private)
-        function load_synergies(this)
-            load('mat_files/synergies_grasp.mat')
+        function load_all(this,all_mat_file_name)
+            load(all_mat_file_name)
             this.N = size(Lapl,1);
             this.L = Lapl;
-            this.pc(:,1) = synergies_vectors(:,1);
-            this.mu(:,1) = synergies_mean';
-            
-            load('mat_files/synergies_rotate.mat')
-            assert(this.N==size(Lapl,1), 'Number of robots must be the same for grasping and rotation synergies')
-            assert(all(size(this.L)==size(Lapl)), 'Laplacians must be the same for grasping and rotation synergies')
-            this.pc(:,2) = synergies_vectors(:,1);
-            this.mu(:,2) = synergies_mean';
-            
-            idcs_all = find(this.L==-1);
-            this.idcs = [];
-            for i = 1 : length(idcs_all)
-                [I,J] = ind2sub(size(this.L),idcs_all(i));
-                if J > I
-                    this.idcs(end+1) = idcs_all(i);
-                end
-            end
-        end % load_synergies
+            this.to = topological_order;
+            this.pc = synergies_vectors;
+            this.mu = synergies_mean';
+        end % load_all
         
         function build_up_weights(this)
             % build up weight matrix for formation control
             this.weights = cell(size(this.pc,2),1);
+            this.weights_mean = NaN(size(this.L));
             for ww = 1 : length(this.weights)
                 this.weights{ww} = zeros(this.N);
                 for i = 1 : size(this.L,1)
                     for j = 1 : size(this.L,2)
                         if this.L(i,j) == -1
                             if j > i
-                                this.weights_mean{ww}(i,j) = this.mu(this.idcs==sub2ind(size(this.L),i,j),ww);
-                                this.weights{ww}(i,j) = this.pc(this.idcs==sub2ind(size(this.L),i,j),ww);
+                                this.weights_mean(i,j) = this.mu(get_index(this.to,[i,j]));
+                                this.weights{ww}(i,j) = this.pc(get_index(this.to,[i,j]),ww);
                             else
-                                this.weights_mean{ww}(i,j) = this.mu(this.idcs==sub2ind(size(this.L),j,i),ww);
-                                this.weights{ww}(i,j) = this.pc(this.idcs==sub2ind(size(this.L),j,i),ww);
+                                this.weights_mean(i,j) = this.mu(get_index(this.to,[j,i]));
+                                this.weights{ww}(i,j) = this.pc(get_index(this.to,[j,i]),ww);
                             end
                         end
                     end
                 end
             end
-        end
+        end % build_up_weights
         
         function initialize_robotarium(this)
             rb = RobotariumBuilder();

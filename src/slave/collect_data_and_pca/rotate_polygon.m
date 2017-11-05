@@ -1,4 +1,7 @@
-function [v,mu] = rotate_polygon(n_robots,L,varargin)
+function [v,mu,varargout] = rotate_polygon(graph_topology_mat_file_name,varargin)
+
+[Lapl,topological_order] = build_laplacian(graph_topology_mat_file_name);
+n_robots = size(Lapl,1);
 
 p = inputParser;
 addOptional(p,'DT',0.01)
@@ -11,10 +14,10 @@ N_DATA = p.Results.N_DATA;
 PLOT_STUFF = p.Results.PLOT_STUFF;
 
 % find number of 'generalized joints' (based on the defined topology)
-idcs_all = find(L==-1);
+idcs_all = find(Lapl==-1);
 idcs = [];
 for i = 1 : length(idcs_all)
-    [I,J] = ind2sub(size(L),idcs_all(i));
+    [I,J] = ind2sub(size(Lapl),idcs_all(i));
     if J > I
         idcs(end+1) = idcs_all(i);
     end
@@ -101,13 +104,13 @@ for g = 1 : N_DATA
         pt(1,:) = p(1,:);
         % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for i = 1 : n_robots
-            neighbors = topological_neighbors(L, i);
+            neighbors = topological_neighbors(Lapl, i);
             for j = neighbors
                 if j > i
                     if i == 1
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(pt(:,i)-pt(:,j));
+                        data_for_pca(get_index(topological_order,[i,j]),end+1*(j == neighbors(1))) = norm(pt(:,i)-pt(:,j));
                     else
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(pt(:,i)-pt(:,j));
+                        data_for_pca(get_index(topological_order,[i,j]),end) = norm(pt(:,i)-pt(:,j));
                     end
                 end
                 % data_for_pca
@@ -131,6 +134,12 @@ for g = 1 : N_DATA
 end
 
 [v,~,~,~,~,mu] = pca(data_for_pca');
+if nargout > 2
+    varargout{1} = data_for_pca;
+    if nargout > 3
+        varargout{2} = Lapl;
+    end
+end
 
 end
 

@@ -1,4 +1,7 @@
-function [v,mu] = grasp_polygon(n_robots,L,varargin)
+function [v,mu,varargout] = grasp_polygon(graph_topology_mat_file_name,varargin)
+
+[Lapl,topological_order] = build_laplacian(graph_topology_mat_file_name);
+N_robots = size(Lapl,1);
 
 p = inputParser;
 addOptional(p,'DT',0.01)
@@ -11,10 +14,10 @@ N_DATA = p.Results.N_DATA;
 PLOT_STUFF = p.Results.PLOT_STUFF;
 
 % find number of 'generalized joints' (based on the defined topology)
-idcs_all = find(L==-1);
+idcs_all = find(Lapl==-1);
 idcs = [];
 for i = 1 : length(idcs_all)
-    [I,J] = ind2sub(size(L),idcs_all(i));
+    [I,J] = ind2sub(size(Lapl),idcs_all(i));
     if J > I
         idcs(end+1) = idcs_all(i);
     end
@@ -49,8 +52,8 @@ for g = 1 : N_DATA
     
     % arrange robot on a circle centered at the object centroid
     r = 1.5*max(sqrt(sum((P-G).^2,1)));
-    p0 = G + r*[cos(linspace(0,n_robots/(n_robots+1)*2*pi,n_robots));
-        sin(linspace(0,n_robots/(n_robots+1)*2*pi,n_robots))];
+    p0 = G + r*[cos(linspace(0,N_robots/(N_robots+1)*2*pi,N_robots));
+        sin(linspace(0,N_robots/(N_robots+1)*2*pi,N_robots))];
     
     % plot stuff %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if PLOT_STUFF
@@ -70,10 +73,10 @@ for g = 1 : N_DATA
     
     % move robots towards object centroid with a proportional controller
     p = p0;
-    in = zeros(n_robots,1);
+    in = zeros(N_robots,1);
     while true
         % move robots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        for i = 1 : n_robots
+        for i = 1 : N_robots
             if ~in(i)
                 in(i) = inpolygon(p(1,i), p(2,i), P(1,:), P(2,:));
                 p(:,i) = p(:,i) + (G-p(:,i))*DT;
@@ -92,14 +95,14 @@ for g = 1 : N_DATA
             pause(0.001)
         end        
         % record data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        for i = 1 : n_robots
-            neighbors = topological_neighbors(L, i);
+        for i = 1 : N_robots
+            neighbors = topological_neighbors(Lapl, i);
             for j = neighbors
                 if j > i
                     if i == 1
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end+1*(j == neighbors(1))) = norm(p(:,i)-p(:,j));
+                        data_for_pca(get_index(topological_order,[i,j]),end+1*(j == neighbors(1))) = norm(p(:,i)-p(:,j));
                     else
-                        data_for_pca(idcs==sub2ind(size(L),i,j),end) = norm(p(:,i)-p(:,j));
+                        data_for_pca(get_index(topological_order,[i,j]),end) = norm(p(:,i)-p(:,j));
                     end
                 end
                 % data_for_pca
@@ -115,6 +118,12 @@ for g = 1 : N_DATA
 end
 
 [v,~,~,~,~,mu] = pca(data_for_pca');
+if nargout > 2
+    varargout{1} = data_for_pca;
+    if nargout > 3
+        varargout{2} = Lapl;
+    end
+end
 
 end
 
