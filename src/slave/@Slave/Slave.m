@@ -6,6 +6,7 @@ classdef Slave < handle
         N
         L
         to
+        robot_poses
         pc
         mu
         robotarium_container
@@ -50,7 +51,19 @@ classdef Slave < handle
                 this.robotarium_container.r.set_velocities(1:this.N, du);
                 this.robotarium_container.r.step();
             end
+            this.robot_poses = x;
         end % move_synergy
+        
+        function J = get_jacobian(this)
+            J = zeros(2*this.N, length(this.to));
+            for n = 1 : 2 : size(J,1)
+                for k = 1 : size(J,2)
+                    ij = this.to{k};
+                    J(n,k) = this.robot_poses(1,ij(1)) - this.robot_poses(1,ij(2));
+                    J(n+1,k) = this.robot_poses(2,ij(1)) - this.robot_poses(2,ij(2));
+                end
+            end
+        end
     end % public methods
     
     methods (Access=private)
