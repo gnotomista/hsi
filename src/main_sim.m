@@ -60,11 +60,10 @@ else
         q = receive(jointsub,10);
         
         % calculate synergies
-        z = pinv(Syn.S)*q.Position
-        SYN_ID = max(z);
+        z = pinv(Syn.S)*q.Position;
+        %SYN_ID = max(z);
         
-        
-        %slave.move_synergy(SYN_ID, s(i+1)+0.5)
+        slave.move_synergy(1, z(1))
         i = i + 1;
     end
 end
