@@ -1,5 +1,6 @@
 #include "ros/ros.h"
-#include "leap_motion_joints/JointPosition.h"
+
+#include <sensor_msgs/JointState.h>
 #include <leap_motion_joints/Leap.h>
 
 #include <iostream>
@@ -7,6 +8,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <cstring>
+#include <vector>
 
 using namespace Leap;
 
@@ -34,7 +36,7 @@ public:
   virtual void onServiceConnect(const Controller&);
   virtual void onServiceDisconnect(const Controller&);
   bool publishing;
-  leap_motion_joints::JointPosition jntPos;
+  std::vector<double> jntPos;
 
 private:
 };
@@ -115,7 +117,7 @@ void SampleListener::onFrame(const Controller& controller) {
         }
     }
 }
-jntPos.values = data;
+jntPos = data;
 #if RECORD
 outputFile << "\n";
 outputFile.close();
@@ -159,7 +161,8 @@ int main (int argc, char** argv){
     SampleListener listener;
     Controller controller;
     controller.addListener(listener);
-    ros::Publisher leapJointsPub = n.advertise<leap_motion_joints::JointPosition>("leap_motion_joints", 1);
+    ros::Publisher leapJointsPub = n.advertise<sensor_msgs::JointState>("leap_motion_joints", 1);
+    sensor_msgs::JointState jnts;
     listener.publishing = false;
     
     std::vector<float> offset(20,0.0);
@@ -194,7 +197,7 @@ int main (int argc, char** argv){
                 std::ofstream outputFile("offset.txt");
                 if (outputFile.is_open())
                 {
-                    std::copy(listener.jntPos.values.begin(), listener.jntPos.values.end(), std::ostream_iterator<float>(outputFile , ", ")); 
+                    std::copy(listener.jntPos.begin(), listener.jntPos.end(), std::ostream_iterator<float>(outputFile , ", ")); 
                     outputFile.flush();
                 }
                 std::cout << "offset saved!" << std::endl;
@@ -205,8 +208,9 @@ int main (int argc, char** argv){
         }
 
         if (listener.publishing){
-            std::transform (listener.jntPos.values.begin(), listener.jntPos.values.end(), offset.begin(), listener.jntPos.values.begin(), std::minus<float>());
-            leapJointsPub.publish(listener.jntPos);
+            std::transform(listener.jntPos.begin(), listener.jntPos.end(), offset.begin(), listener.jntPos.begin(), std::minus<float>());
+            jnts.position = listener.jntPos;
+            leapJointsPub.publish(jnts);
             listener.publishing = false;
         }
 
