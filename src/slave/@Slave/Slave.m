@@ -55,6 +55,7 @@ classdef Slave < handle
         end % move_synergy
         
         function J = get_jacobian(this)
+            assert(~isempty(this.robot_poses),'Robot poses is empty. Make sure to call move_synergy before calling get_jacobian.')
             J = zeros(2*this.N, length(this.to));
             for n = 1 : 2 : size(J,1)
                 for k = 1 : size(J,2)
@@ -63,7 +64,21 @@ classdef Slave < handle
                     J(n+1,k) = this.robot_poses(2,ij(1)) - this.robot_poses(2,ij(2));
                 end
             end
-        end
+        end % get_jacobian
+        
+        function A = get_A(this)
+            % A: see "Prattihizzo - Mapping syergies - TRO"
+            assert(~isempty(this.robot_poses),'Robot poses is empty. Make sure to call move_synergy before calling get_jacobian.')
+            o = mean(this.robot_poses(1:2,:),2);
+            M = [0 -1; 1 0];
+            A = zeros(2*this.N, 5);
+            for n = 1 : this.N
+                p = this.robot_poses(1:2,n);
+                A(2*n-1:2*n,1:2) = eye(2);
+                A(2*n-1:2*n,3:4) = norm(p-o)*M;
+                A(2*n-1:2*n,5) = p-o;
+            end
+        end % get_A
     end % public methods
     
     methods (Access=private)
