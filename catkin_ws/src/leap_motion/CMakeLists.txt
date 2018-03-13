@@ -128,6 +128,7 @@ include_directories(
 
 ## Declare a C++ executable
 add_executable(leap_motion_joints_node src/leap_motion_joints_node.cpp)
+add_executable(leap_motion_record_joints src/leap_motion_record.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -136,6 +137,11 @@ add_executable(leap_motion_joints_node src/leap_motion_joints_node.cpp)
 FIND_LIBRARY(Leap_LIBRARIES Leap ${CMAKE_CURRENT_SOURCE_DIR}/lib/)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(leap_motion_joints_node
+  ${Leap_LIBRARIES}
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(leap_motion_record_joints
   ${Leap_LIBRARIES}
   ${catkin_LIBRARIES}
 )
