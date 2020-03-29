@@ -1,5 +1,5 @@
 # Towards Natural Human-Swarm Teleoperation Using Hand Synergies
-====================
+=====================
 
 ## Publication
 If you use this code in an academic context, please cite the following:
