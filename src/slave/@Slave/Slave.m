@@ -25,7 +25,7 @@ classdef Slave < handle
             this.load_all(all_mat_file_name);
             this.initialize_robotarium();
             this.build_up_weights();
-            
+                        
             this.EPS_DX = 0.05;
             this.FORMATION_CONTROL_GAIN = 10;
             this.MAX_ITER = 200;
