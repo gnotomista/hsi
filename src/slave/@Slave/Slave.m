@@ -10,6 +10,8 @@ classdef Slave < handle
         pc
         mu
         robotarium_container
+        robots_in_contact
+        G
     end % public properties
     
     properties (Access=private)
@@ -29,6 +31,8 @@ classdef Slave < handle
             this.EPS_DX = 0.05;
             this.FORMATION_CONTROL_GAIN = 10;
             this.MAX_ITER = 200;
+            this.robots_in_contact = [];
+            this.G = zeros(3, 2*this.N); 
         end % Slave (constructor)
         
         function move_synergy(this, syn_id, syn_val)

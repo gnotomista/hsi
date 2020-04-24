@@ -4,6 +4,7 @@ classdef RigidBody < handle
     
     properties
         shape_
+        o_ = eye(3);
     end % public properties
     
     properties (Access=private)
@@ -13,7 +14,9 @@ classdef RigidBody < handle
     methods
         function this = RigidBody(V)
             this.shape_ = polyshape(V(:,1)', V(:,2)');
+            [this.o_(1,3) this.o_(2,3)] = centroid(this.shape_);
             gcf; plot(this.shape_);
+            
         end % Object (constructor)
         
         function [robot, minDist, edge, u, v] = check_collision(this, P)

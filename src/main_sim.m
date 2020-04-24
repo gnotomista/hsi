@@ -62,9 +62,9 @@ if (SIMULATED_MASTER)
         if i == t(j)
            j = j+1;
            figure(1)
-           export_fig(strcat(strcat('master',int2str(j)),'.png'))  
+           % export_fig(strcat(strcat('master',int2str(j)),'.png'))  
            figure(2)
-           export_fig(strcat(strcat('slave',int2str(j)),'.png'))  
+           % export_fig(strcat(strcat('slave',int2str(j)),'.png'))  
         end
         i = i + 1;
         
