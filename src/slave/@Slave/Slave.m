@@ -20,6 +20,7 @@ classdef Slave < handle
         EPS_DX
         FORMATION_CONTROL_GAIN
         MAX_ITER
+        optimparam
     end % private properties
     
     methods
@@ -31,6 +32,16 @@ classdef Slave < handle
             this.EPS_DX = 0.05;
             this.FORMATION_CONTROL_GAIN = 10;
             this.MAX_ITER = 200;
+            this.optimparam.optimoptions = optimoptions(@quadprog, 'Display', 'off');
+            this.optimparam.kappa = 1;
+            this.optimparam.H = diag([ones(1,this.N) this.optimparam.kappa*ones(1,this.N)]);
+            this.optimparam.f = zeros(1,2*this.N);
+            this.optimparam.theta_max = -pi;
+            this.optimparam.V = @(th, th_hinge) (th-th_hinge)^2;
+            this.optimparam.h = @(th, th_hinge) this.optimparam.theta_max^2 - (th-th_hinge)^2;
+            this.optimparam.dV_dth = @(th, th_hinge) 2*(th-th_hinge);
+            this.optimparam.dh_dth = @(th, th_hinge) -2*(th-th_hinge);
+            this.optimparam.alpha = @(s) s;
             this.robots_in_contact = [];
             this.G = zeros(3, 2*this.N); 
         end % Slave (constructor)
@@ -58,6 +69,32 @@ classdef Slave < handle
             this.robot_poses = x;
         end % move_synergy
         
+        function shared_obj_manipulation(this, v_obj_des, omega_obj_des)
+            this.robot_poses = this.robotarium_container.r.get_poses();
+            Theta = zeros(2*this.N,this.N);
+            Aineq = zeros(2*this.N, 2*this.N); % (N CLFs + N CBFs) x (N v + N omega)
+            bineq = zeros(2*this.N, 1);
+            for i = 1 : this.N
+                thetai = this.robot_poses(3,i);
+                thetai_hinge = thetai; % TODO: this depends on the initial contact between the robots and the object
+                Theta((i-1)*2+1:2*i, i) = [cos(thetai); sin(thetai)];
+                Aineq(i, this.N+i) = this.optimparam.dV_dth(thetai, thetai_hinge);
+                bineq(i) = -this.optimparam.alpha(this.optimparam.V(thetai, thetai_hinge));
+                Aineq(this.N+i, this.N+i) = -this.optimparam.dh_dth(thetai, thetai_hinge);
+                bineq(this.N+i) = this.optimparam.alpha(this.optimparam.h(thetai, thetai_hinge));
+            end
+            Aeq = [this.G * Theta, zeros(3, this.N)];
+            beq = [v_obj_des; omega_obj_des];
+            v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1)], inf(2*this.N,1), [], this.optimparam.optimoptions);
+            du = reshape(v_omega',this.N,2)';
+            this.robotarium_container.r.set_velocities(1:this.N, du);
+            this.robotarium_container.r.step();
+            % TODO: implement motion of the object and robot (ghosts and non-ghosts)
+            %       also, now the poses of the robots are wrong, we need to
+            %       consider the interaction with the object in simulation too
+        end % shared_obj_manipulation
+        
+        % getters
         function J = get_jacobian(this)
             assert(~isempty(this.robot_poses),'Robot poses is empty. Make sure to call move_synergy before calling get_jacobian.')
             J = zeros(2*this.N, length(this.to));
@@ -83,6 +120,15 @@ classdef Slave < handle
                 A(2*n-1:2*n,5) = p-o;
             end
         end % get_A
+        
+        % setters
+        function set_kappa(this, kappa)
+            this.optimparam.kappa = kappa;
+        end % set_kappa
+        
+        function set_theta_max(this, theta_max)
+            this.optimparam.theta_max = theta_max;
+        end % set_theta_max
     end % public methods
     
     methods (Access=private)
@@ -118,16 +164,10 @@ classdef Slave < handle
         end % build_up_weights
         
         function initialize_robotarium(this)
-            rb = RobotariumBuilder();
-            this.robotarium_container.r = rb.set_number_of_agents(this.N).set_save_data(false).set_show_figure(true).build();
-            
-            linearVelocityGain = 1;
-            angularVelocityGain = pi/2;
-            
-            this.robotarium_container.si_pos_ctrl = create_si_position_controller('XVelocityGain', 2, 'YVelocityGain', 2);
-            this.robotarium_container.si_barrier_cert = create_si_barrier_certificate('SafetyRadius', 0.06);
-            this.robotarium_container.si_to_uni_dyn = create_si_to_uni_mapping2('LinearVelocityGain', linearVelocityGain, ...
-                'AngularVelocityLimit', angularVelocityGain);
+            init_positions = [cos(2*pi/this.N:2*pi/this.N:2*pi); sin(2*pi/this.N:2*pi/this.N:2*pi)];
+            init_poses = [init_positions; atan2(-init_positions(2,:), -init_positions(1,:))];
+            this.robotarium_container.r = Robotarium('NumberOfRobots', this.N, 'ShowFigure', true, 'InitialConditions', init_poses);
+            this.robotarium_container.si_to_uni_dyn = create_si_to_uni_dynamics();
         end % initialize_robotarium
     end % private methods
     
