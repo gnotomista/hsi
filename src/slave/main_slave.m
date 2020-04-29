@@ -58,7 +58,7 @@ for t = 1 : size(s)-1
         for i = 1 : size(coll_robots,2)                                             % for all the new colliding robots
            index = find(robot==coll_robots(i));                                     % find the index in the vector of colliding robots
            rp = slave.robot_poses(1:2, coll_robots(i));                             % retrieve its position
-           c = edge(index,1:2)' + u(index)*(edge(index,3:4)-edge(index,1:2))';      % reconstruct the contact point (nearest point on the object border)
+           c = edge(index,1:2)' + u(index)*(edge(index,3:4)-edge(index,1:2))';      % reconstruct the contact point (nearest point on the object border) // move in check collision
            oc = c - obj.o_(1:2,3);
            goc = eye(3); goc(1:2,3) = oc;
            slave.G(:, 2*coll_robots(i)-1:2*coll_robots(i)) = gi(inv(goc));
