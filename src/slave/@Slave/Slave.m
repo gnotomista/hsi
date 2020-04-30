@@ -16,6 +16,7 @@ classdef Slave < handle
         robots_in_contact_num
         G
         u
+        v
     end % public properties
     
     properties (Access=private)
@@ -62,6 +63,8 @@ classdef Slave < handle
                 end
             end
             this.u = this.robotarium_container.si_to_uni_dyn(dx, this.robot_poses);
+            theta = this.robot_poses(3,:);
+            this.v = this.u(1,:).*[cos(theta); sin(theta)];
         end % swarm_syn
         
         function opt_obj_manip(this, v_obj_des, omega_obj_des)
@@ -82,6 +85,8 @@ classdef Slave < handle
             beq = [v_obj_des; omega_obj_des]
             v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1)], inf(2*this.N,1), [], this.optimparam.optimoptions);
             this.u = reshape(v_omega',this.N,2)';
+            theta = this.robot_poses(3,:);
+            this.v = this.u(1,:).*[cos(theta); sin(theta)];
         end % opt_obj_manip
         
         function swarm_syn_and_opt_obj_manip(this, syn_id, syn_val, v_obj_des, omega_obj_des)
@@ -105,9 +110,9 @@ classdef Slave < handle
             if this.robots_in_contact_num > 0
                 this.G = zeros(3, 2*this.N);
                 for i = 1 : this.N
-                    if ismember(i, this.robots_in_contact)
+                    if ismember(i, this.robots_in_contact_ids)
                         goc = eye(3);
-                        goc(1:2,3) = contact_points(:,i) - obj_centroid;
+                        goc(1:2,3) = obj_centroid(1:2, 1:2)'*(contact_points(:,i) - obj_centroid(1:2,3));
                         this.G(:, 2*i-1:2*i) = gi(inv(goc));
                     end
                 end

@@ -47,12 +47,14 @@ slave.set_max_iter(6);
 set(slave.robotarium_container.r.figure_handle,...
     'units','normalized','position',[.5 .2 .45 .6])
 figure(2)
+
 obj = RigidBody([-.3 -0.3; -.3 0.3; 0.1 0.3; 0.3 -.2]);
 
 %% Main
 if (SIMULATED_MASTER)
     for t = 1 : size(s)-1
-        % master
+        
+        % update master
         figure(1)
         hand = SGactivateSynergies(hand, -[s(t+1)-s(t),0]');
         % [v_des, omega_des] = get_v_omega_des();
@@ -75,31 +77,29 @@ if (SIMULATED_MASTER)
             slave.swarm_syn_and_opt_obj_manip(SYN_ID, s(t), v_obj_des, omega_obj_des)
         end
         slave.step()
-        % ---------------------------------------------------------- ACTUAL
-        % [robot_idcs, contact_points, forces] = obj.check_contact();
-        % ------------------------------------------------------------ TEST
-        [robot_idcs, minDist, edge, u, v] = obj.check_collision(slave.robot_poses(1:2,:)');
-        contact_points = zeros(2,slave.N);
-        for i = 1 : numel(robot_idcs)
-            contact_points(:,robot_idcs(i)) = edge(i,1:2)' + u(i)*(edge(i,3:4)-edge(i,1:2))';
-            figure(2)
-            plot(contact_points(1,robot_idcs(i)), contact_points(2,robot_idcs(i)), 'r*')
-            drawnow
-        end
-        % ------------------------------------------------------------- END
-        % ---------------------------------------------------------- ACTUAL
-        % contact_points_integrated_positions = obj.step(contact_points, contact_points_velocities, friction, noise); % this can easily simulates non-operational robots
-        % ------------------------------------------------------------ TEST
-        contact_points_integrated_positions = slave.robot_poses;
-        contact_points_integrated_positions(1:2,robot_idcs) = contact_points(:,robot_idcs);
-        % ------------------------------------------------------------- END
+
+        % check and plot contact points
+        [robot_idcs, contact_points, ~] = obj.check_contact(slave.robot_poses(1:2,:)', figure(2));
+        slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_);
+        
+        obj.set_grasp_matrix(slave.G);           % set object grasp matrix
+        obj.set_contact_points(contact_points);  % set object contact points
+
+        % integrate object and restore robot positions
+        contact_points_integrated_positions = obj.step(robot_idcs, slave.v, 0, 0); % this can easily simulate non-operational robots
+        robot_integrated_positions = slave.robot_poses;
+        robot_integrated_positions(1:2, robot_idcs) = contact_points_integrated_positions(:, robot_idcs);
+
         for i = 1 : slave.N
             % this needs some logic, e.g. if (contact changed || object pose changed)
             slave.set_theta_hinge(i, slave.robot_poses(3,i))
         end
-        slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_(1:2,3));
-        slave.overwrite_poses(contact_points_integrated_positions)
+        % slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_(1:2,3));
         
+        slave.overwrite_poses(robot_integrated_positions)
+        
+        figure(2)
+        slave_frames = [slave_frames, getframe(gcf)];
         % force feedback to master
         % ---------------------------------------------------------- ACTUAL
         % master.set_forces(forces) % or show_forces(forces)
