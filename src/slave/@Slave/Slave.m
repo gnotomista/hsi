@@ -33,6 +33,8 @@ classdef Slave < handle
             this.initialize_robotarium();
             this.robot_poses = this.robotarium_container.r.get_poses();
             this.robotarium_container.r.step();
+            this.robots_in_contact_ids = [];
+            this.robots_in_contact_num = 0;
             this.build_up_weights();
             this.theta_hinge = zeros(1,this.N);
             this.EPS_DX = 0.05;
@@ -81,9 +83,7 @@ classdef Slave < handle
             end
             Aeq = [this.G * Theta, zeros(3, this.N)];
             beq = [v_obj_des; omega_obj_des];
-            % v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1)], inf(2*this.N,1), [], this.optimparam.optimoptions);
-            % TODO: remove following line and uncomment the previous
-            v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [-inf(this.N,1); -inf(this.N,1)], inf(2*this.N,1), []);%, this.optimparam.optimoptions);
+            v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1)], inf(2*this.N,1), [], this.optimparam.optimoptions);
             this.u = reshape(v_omega',this.N,2)';
             theta = this.robot_poses(3,:);
             this.v = this.u(1,:).*[cos(theta); sin(theta)];
@@ -120,7 +120,6 @@ classdef Slave < handle
         end % update_grasp_matrix
         
         function x = retrieve_poses(this)
-            this.robot_poses = this.robotarium_container.r.get_poses();
             x = this.robot_poses;
         end % retrieve_poses
         
@@ -136,6 +135,7 @@ classdef Slave < handle
                 end
                 this.robotarium_container.r.set_velocities(1:this.N, this.u);
                 this.robotarium_container.r.step();
+                this.robot_poses = this.robotarium_container.r.get_poses();
             end
         end % step
         

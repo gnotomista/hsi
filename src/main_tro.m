@@ -43,7 +43,7 @@ end
 
 %% Slave
 slave = Slave('mat_files/all_data');
-slave.set_max_iter(6);
+slave.set_max_iter(1);
 set(slave.robotarium_container.r.figure_handle,...
     'units','normalized','position',[.5 .2 .45 .6])
 figure(2)
@@ -58,8 +58,8 @@ if (SIMULATED_MASTER)
         figure(1)
         hand = SGactivateSynergies(hand, -[s(t+1)-s(t),0]');
         % [v_des, omega_des] = get_v_omega_des();
-        v_obj_des = [0;0]; % setting these to something nonzero when few robots are in contact can easily lead to infeasibility of the opt probl
-        omega_obj_des = 1;
+        v_obj_des = [0;1]; % setting these to something nonzero when few robots are in contact can easily lead to infeasibility of the opt probl
+        omega_obj_des = 0;
         % plot master
         SGplotHand(hand)
         axis equal
@@ -74,7 +74,8 @@ if (SIMULATED_MASTER)
         if isempty(slave.G)
             slave.swarm_syn(SYN_ID, s(t))
         else
-            if rank(slave.G) < 3 % TODO: wrong, as the robots cannot go backwards, I removed the v>0 constraint in the opt probl
+            if size(null(slave.G),2) > 2*slave.N-3 ...
+                    || ~inpolygon(0,0,slave.robot_poses(1,slave.robots_in_contact_ids),slave.robot_poses(2,slave.robots_in_contact_ids))
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s(t), zeros(2,1), 0)
             else
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s(t), v_obj_des, omega_obj_des)
