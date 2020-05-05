@@ -11,7 +11,6 @@ classdef Slave < handle
         pc
         mu
         robotarium_container
-        robots_in_contact
         robots_in_contact_ids
         robots_in_contact_num
         G
@@ -49,7 +48,6 @@ classdef Slave < handle
             this.optimparam.dV_dth = @(th, th_hinge) 2*(th-th_hinge);
             this.optimparam.dh_dth = @(th, th_hinge) -2*(th-th_hinge);
             this.optimparam.alpha = @(s) s;
-            this.robots_in_contact = [];
             this.G = [];
         end % Slave (constructor)
         
@@ -72,18 +70,20 @@ classdef Slave < handle
             Aineq = zeros(2*this.N, 2*this.N); % (N CLFs + N CBFs) x (N v + N omega)
             bineq = zeros(2*this.N, 1);
             for i = 1 : this.N
-                if ismember(i, this.robots_in_contact)
+                if ismember(i, this.robots_in_contact_ids)
                     thetai = this.robot_poses(3,i);
-                    Theta((i-1)*2+1:2*i, i) = [cos(thetai); sin(thetai)];
+                    Theta(2*i-1:2*i, i) = [cos(thetai); sin(thetai)];
                     Aineq(i, this.N+i) = this.optimparam.dV_dth(thetai, this.theta_hinge(i));
                     bineq(i) = -this.optimparam.alpha(this.optimparam.V(thetai, this.theta_hinge(i)));
                     Aineq(this.N+i, this.N+i) = -this.optimparam.dh_dth(thetai, this.theta_hinge(i));
                     bineq(this.N+i) = this.optimparam.alpha(this.optimparam.h(thetai, this.theta_hinge(i)));
                 end
             end
-            Aeq = [this.G * Theta, zeros(3, this.N)]
-            beq = [v_obj_des; omega_obj_des]
-            v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1)], inf(2*this.N,1), [], this.optimparam.optimoptions);
+            Aeq = [this.G * Theta, zeros(3, this.N)];
+            beq = [v_obj_des; omega_obj_des];
+            % v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1)], inf(2*this.N,1), [], this.optimparam.optimoptions);
+            % TODO: remove following line and uncomment the previous
+            v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [-inf(this.N,1); -inf(this.N,1)], inf(2*this.N,1), []);%, this.optimparam.optimoptions);
             this.u = reshape(v_omega',this.N,2)';
             theta = this.robot_poses(3,:);
             this.v = this.u(1,:).*[cos(theta); sin(theta)];
@@ -96,7 +96,7 @@ classdef Slave < handle
                 this.opt_obj_manip(v_obj_des, omega_obj_des);
                 this.u(:,setdiff(1:this.N,this.robots_in_contact_ids)) = du_nom(:,setdiff(1:this.N,this.robots_in_contact_ids));
             end
-        end
+        end % swarm_syn_and_opt_obj_manip
         
         function G = update_grasp_matrix(this, robot_idcs, contact_points, obj_centroid)
             % contact_points contains, on the columns, the poses of all the
@@ -104,7 +104,6 @@ classdef Slave < handle
             % case the corresponding component of robot_idcs will be 1) and
             % if they are not.
             this.G = [];
-            this.robots_in_contact = robot_idcs;
             this.robots_in_contact_ids = find(robot_idcs);
             this.robots_in_contact_num = numel(this.robots_in_contact_ids);
             if this.robots_in_contact_num > 0

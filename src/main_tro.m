@@ -59,7 +59,7 @@ if (SIMULATED_MASTER)
         hand = SGactivateSynergies(hand, -[s(t+1)-s(t),0]');
         % [v_des, omega_des] = get_v_omega_des();
         v_obj_des = [0;0]; % setting these to something nonzero when few robots are in contact can easily lead to infeasibility of the opt probl
-        omega_obj_des = 0;
+        omega_obj_des = 1;
         % plot master
         SGplotHand(hand)
         axis equal
@@ -74,22 +74,26 @@ if (SIMULATED_MASTER)
         if isempty(slave.G)
             slave.swarm_syn(SYN_ID, s(t))
         else
-            slave.swarm_syn_and_opt_obj_manip(SYN_ID, s(t), v_obj_des, omega_obj_des)
+            if rank(slave.G) < 3 % TODO: wrong, as the robots cannot go backwards, I removed the v>0 constraint in the opt probl
+                slave.swarm_syn_and_opt_obj_manip(SYN_ID, s(t), zeros(2,1), 0)
+            else
+                slave.swarm_syn_and_opt_obj_manip(SYN_ID, s(t), v_obj_des, omega_obj_des)
+            end
         end
         slave.step()
-
+        
         % check and plot contact points
         [robot_idcs, contact_points, ~] = obj.check_contact(slave.robot_poses(1:2,:)', figure(2));
         slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_);
         
         obj.set_grasp_matrix(slave.G);           % set object grasp matrix
         obj.set_contact_points(contact_points);  % set object contact points
-
+        
         % integrate object and restore robot positions
         contact_points_integrated_positions = obj.step(robot_idcs, slave.v, 0, 0); % this can easily simulate non-operational robots
         robot_integrated_positions = slave.robot_poses;
         robot_integrated_positions(1:2, robot_idcs) = contact_points_integrated_positions(:, robot_idcs);
-
+        
         for i = 1 : slave.N
             % this needs some logic, e.g. if (contact changed || object pose changed)
             slave.set_theta_hinge(i, slave.robot_poses(3,i))

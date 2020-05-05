@@ -85,8 +85,9 @@ classdef RigidBody < matlab.mixin.Copyable
                 
                 % integrate
                 theta = w*this.dt_;
-                Ro = rotz(theta);
-                e = [Ro(1:2,1:2), v*this.dt_; 0 0 1];
+                % Ro = rotz(theta); % ua 'o Phased Array System Toolbox pe 'na matric 'e rotazion?
+                % e = [Ro(1:2,1:2), v*this.dt_; 0 0 1];
+                e = [[cos(theta) -sin(theta); sin(theta) cos(theta)], v*this.dt_; 0 0 1];
                 this.o_ = this.o_*e;
                 
                 % re-compute contact points after integration
@@ -96,7 +97,7 @@ classdef RigidBody < matlab.mixin.Copyable
                 this.shape_.Vertices = (this.o_(1:2, 3)+this.o_(1:2,1:2)*this.vertices_b_)';
                 gcf; delete(this.h_shape_); this.h_shape_ = plot(this.shape_, 'FaceColor', [0 0.4470 0.7410], 'FaceAlpha', 0.3500);
             else
-                C = []
+                C = [];
             end
         end % step
         
