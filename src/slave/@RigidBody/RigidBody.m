@@ -14,7 +14,9 @@ classdef RigidBody < matlab.mixin.Copyable
         t_ = [];            % body twist
         a_ = [];            % body acceleration
         Fb_ = [];           % body wrench
-        dt_ = 0.01          % integration time step
+        dt_ = 0.01;         % integration time step
+        b_ = 10;            % damping coefficient
+        kp_ = 10;           % force coefficient
         
         h_contact_points_
         h_shape_
@@ -31,6 +33,7 @@ classdef RigidBody < matlab.mixin.Copyable
             gcf; this.h_shape_ = plot(this.shape_, 'FaceColor', [0 0.4470 0.7410], 'FaceAlpha', 0.3500);
             this.Mb_ = [this.mass_*eye(2), zeros(2,1); zeros(1,2), this.I_];
             this.vertices_b_ = this.o_(1:2,1:2)'*(this.shape_.Vertices'-this.o_(1:2,3));
+            this.t_ = zeros(3,1); this.a_ = zeros(3,1);
         end % Object (constructor)
         
         function [robot_idcs, contact_points, forces] = check_contact(this, P, h_fig)
@@ -79,9 +82,11 @@ classdef RigidBody < matlab.mixin.Copyable
                 contact_velocity = this.o_(1:2,1:2)'*robot_cmd_velocity; % assumption: contact = body orientation
                 
                 % compute body velocity
-                body_velocity = this.Mb_\this.G_*reshape(contact_velocity, size(this.G_,2),1);
-                v = body_velocity(1:2);
-                w = body_velocity(3);
+                this.a_ = this.Mb_\(this.G_*reshape(contact_velocity, size(this.G_,2),1)*this.kp_ - this.b_*this.t_);
+                this.t_ = this.t_ + this.a_*this.dt_;
+                
+                v = this.t_(1:2);
+                w = this.t_(3);
                 
                 % integrate
                 theta = w*this.dt_;

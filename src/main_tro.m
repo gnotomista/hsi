@@ -43,7 +43,7 @@ end
 
 %% Slave
 slave = Slave('mat_files/all_data');
-slave.set_max_iter(1);
+slave.set_max_iter(4);
 set(slave.robotarium_container.r.figure_handle,...
     'units','normalized','position',[.5 .2 .45 .6])
 figure(2)
@@ -58,7 +58,7 @@ if (SIMULATED_MASTER)
         figure(1)
         hand = SGactivateSynergies(hand, -[s(t+1)-s(t),0]');
         % [v_des, omega_des] = get_v_omega_des();
-        v_obj_des = [0;1]; % setting these to something nonzero when few robots are in contact can easily lead to infeasibility of the opt probl
+        v_obj_des = [1;0]; % setting these to something nonzero when few robots are in contact can easily lead to infeasibility of the opt probl
         omega_obj_des = 0;
         % plot master
         SGplotHand(hand)
