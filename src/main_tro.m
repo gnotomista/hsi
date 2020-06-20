@@ -16,7 +16,7 @@ end
 %% Master
 Syn = load('synergiesGraspRot.mat');
 if (SIMULATED_MASTER)
-    t = 0:0.1:4;
+    t = 0:0.1:5;
     [a,s] = arclength(t(end),1,t');
     s = -2*s;
     T = eye(4);
@@ -91,9 +91,10 @@ if (SIMULATED_MASTER)
         obj.set_contact_points(contact_points);  % set object contact points
         
         % integrate object and restore robot positions
-        contact_points_integrated_positions = obj.step(robot_idcs, slave.v, 0, 0); % this can easily simulate non-operational robots
+        contact_points_integrated_positions = obj.step(robot_idcs, slave.v, 10, 0); % this can easily simulate non-operational robots
         robot_integrated_positions = slave.robot_poses;
         robot_integrated_positions(1:2, robot_idcs) = contact_points_integrated_positions(:, robot_idcs);
+        robot_integrated_positions = slave.check_robot_collisions(robot_integrated_positions);
         
         for i = 1 : slave.N
             % this needs some logic, e.g. if (contact changed || object pose changed)
@@ -102,6 +103,7 @@ if (SIMULATED_MASTER)
         % slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_(1:2,3));
         
         slave.overwrite_poses(robot_integrated_positions)
+        % slave.plot_bb([0,1,0]);
         
         figure(2)
         slave_frames = [slave_frames, getframe(gcf)];

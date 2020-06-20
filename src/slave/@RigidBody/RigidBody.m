@@ -6,8 +6,8 @@ classdef RigidBody < matlab.mixin.Copyable
         shape_              % object shape
         vertices_b_         % vertices in body frame
         o_ = eye(3);        % center of mass pose
-        mass_ = 1;          % mass
-        I_ = 1;             % body inertia
+        mass_ = 5e-1;          % mass
+        I_ = 5e-1;             % body inertia
         contacts_ = [];     % list of contacts in body frame
         Mb_ = zeros(3,3);   % body mass matrix
         G_ = [];            % grasp matrix
@@ -16,8 +16,9 @@ classdef RigidBody < matlab.mixin.Copyable
         Fb_ = [];           % body wrench
         dt_ = 0.01;         % integration time step
         b_ = 10;            % damping coefficient
-        kp_ = 10;           % force coefficient
+        kp_ = 10;           % force gain
         
+        % handles
         h_contact_points_
         h_shape_
     end % public properties
@@ -67,6 +68,7 @@ classdef RigidBody < matlab.mixin.Copyable
             
             % draw contacts
             h_fig;
+            hold on;
             if (robot_idcs(robot_idcs>0))
                 delete(this.h_contact_points_);
                 this.h_contact_points_ = plot(contact_points(1, find(robot_idcs)), contact_points(2, find(robot_idcs)), 'b*');
@@ -75,7 +77,7 @@ classdef RigidBody < matlab.mixin.Copyable
         end % check_contact
         
         function C = step(this, robot_idcs, robot_cmd_velocity, friction, noise)
-                        
+            this.b_ = friction;
             if(find(robot_idcs))
 
                 % rotate robot velocity in contact frame

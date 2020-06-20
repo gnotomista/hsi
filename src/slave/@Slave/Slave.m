@@ -16,6 +16,8 @@ classdef Slave < handle
         G
         u
         v
+        bouding_box_radius
+        h_bouding_box
     end % public properties
     
     properties (Access=private)
@@ -51,6 +53,7 @@ classdef Slave < handle
             this.optimparam.dh_dth = @(th, th_hinge) -2*(th-th_hinge);
             this.optimparam.alpha = @(s) s;
             this.G = [];
+            this.bouding_box_radius = 0.08;
         end % Slave (constructor)
         
         function swarm_syn(this, syn_id, syn_val)
@@ -138,6 +141,34 @@ classdef Slave < handle
                 this.robot_poses = this.robotarium_container.r.get_poses();
             end
         end % step
+        
+        function plot_bb(this, c)
+            delete(this.h_bouding_box);
+            for i = 1 : this.N
+                x = this.robot_poses(1, i);
+                y = this.robot_poses(2, i);
+                hold on
+                th = 0:pi/50:2*pi;
+                x_circle = this.bouding_box_radius * cos(th) + x;
+                y_circle = this.bouding_box_radius * sin(th) + y;
+                this.h_bouding_box = [this.h_bouding_box, plot(x_circle, y_circle)];
+                this.h_bouding_box = [this.h_bouding_box, fill(x_circle, y_circle, c, 'FaceAlpha', 0.5)];
+                hold off
+            end
+        end % plot_bb
+        
+        function rob_pos_coll = check_robot_collisions(this, rob_pos)
+            rob_pos_coll = rob_pos;
+            for i = 1 : this.N-1
+                for j = i+1 : this.N
+                    if(norm(rob_pos(1:2,i) - rob_pos(1:2,j)) < 2*this.bouding_box_radius)
+                        coll_pen = norm(rob_pos(1:2,i) - rob_pos(1:2,j))-2*this.bouding_box_radius;
+                        rob_pos_coll(1:2,i) = rob_pos_coll(1:2,i) - 0.5*coll_pen*(rob_pos(1:2,i) - rob_pos(1:2,j))/norm(rob_pos(1:2,i) - rob_pos(1:2,j));
+                        rob_pos_coll(1:2,j) = rob_pos_coll(1:2,j) - 0.5*coll_pen*(rob_pos(1:2,j) - rob_pos(1:2,i))/norm(rob_pos(1:2,i) - rob_pos(1:2,j));
+                    end
+                end
+            end
+        end
         
         % getters
         function J = get_jacobian(this)
