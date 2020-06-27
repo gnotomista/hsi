@@ -65,7 +65,10 @@ classdef Slave < handle
                         this.FORMATION_CONTROL_GAIN * (norm(this.robot_poses(1:2, i) - this.robot_poses(1:2, j))^2 - (this.weights_mean(i, j) + syn_val*this.weights{syn_id}(i, j))^2) * (this.robot_poses(1:2, j) - this.robot_poses(1:2, i));
                 end
             end
-            this.u = this.robotarium_container.si_to_uni_dyn(dx, this.robot_poses);
+            % used the classic diffeo instead of: this.u = this.robotarium_container.si_to_uni_dyn(dx, this.robot_poses);
+            for i = 1 : this.N
+                this.u(:,i) = diag([1 1/0.01]) * [cos(this.robot_poses(3,i)) sin(this.robot_poses(3,i)); -sin(this.robot_poses(3,i)) cos(this.robot_poses(3,i))] * dx(:,i);
+            end
             theta = this.robot_poses(3,:);
             this.v = this.u(1,:).*[cos(theta); sin(theta)];
         end % swarm_syn
@@ -97,7 +100,10 @@ classdef Slave < handle
             du_nom = this.u;
             if this.robots_in_contact_num > 0
                 this.opt_obj_manip(v_obj_des, omega_obj_des);
-                this.u(:,setdiff(1:this.N,this.robots_in_contact_ids)) = du_nom(:,setdiff(1:this.N,this.robots_in_contact_ids));
+                % (a) robots in contact are not controlled by the synergies
+                % this.u(:,setdiff(1:this.N,this.robots_in_contact_ids)) = du_nom(:,setdiff(1:this.N,this.robots_in_contact_ids));
+                % (b) robots in contact are controlled also by the synergies
+                this.u = this.u + du_nom;
             end
         end % swarm_syn_and_opt_obj_manip
         
@@ -249,7 +255,7 @@ classdef Slave < handle
         
         function initialize_robotarium(this)
             init_positions = [cos(2*pi/this.N:2*pi/this.N:2*pi); sin(2*pi/this.N:2*pi/this.N:2*pi)];
-            init_poses = [init_positions; atan2(-init_positions(2,:), -init_positions(1,:))];
+            init_poses = [init_positions; rand(1,this.N).*atan2(-init_positions(2,:), -init_positions(1,:))];
             this.robotarium_container.r = Robotarium('NumberOfRobots', this.N, 'ShowFigure', true, 'InitialConditions', init_poses);
             this.robotarium_container.si_to_uni_dyn = create_si_to_uni_dynamics();
         end % initialize_robotarium

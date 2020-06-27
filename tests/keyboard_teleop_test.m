@@ -11,11 +11,12 @@ s = -2*s;
 
 %% Slave
 slave = Slave('mat_files/all_data');
-slave.set_max_iter(4);
+slave.set_max_iter(1);
 set(slave.robotarium_container.r.figure_handle,...
     'units','normalized','position',[.5 .2 .45 .6])
 load_environment
 obj = RigidBody([-.3 -0.3; -.3 0.3; 0.1 0.3; 0.3 -.2]);
+axis([-2 7 -2.5 5])
 
 %% Main
 s = 0;
@@ -24,11 +25,11 @@ if (true)
         x = input("press some button", 's')
         switch x
             case "e"
-                s = s + 0.1;
+                s = 2;
                 v_obj_des = [0;0];
                 omega_obj_des = 0;
             case "f"
-                s = s - 0.1;
+                s = -2;
                 v_obj_des = [0;0];
                 omega_obj_des = 0;
             case "d"
@@ -60,7 +61,7 @@ if (true)
             slave.swarm_syn(SYN_ID, s)
         else
             if size(null(slave.G),2) > 2*slave.N-3 ...
-                    || ~inpolygon(0,0,slave.robot_poses(1,slave.robots_in_contact_ids),slave.robot_poses(2,slave.robots_in_contact_ids))
+                    || ~inpolygon(0,0,cos(slave.robot_poses(3,slave.robots_in_contact_ids)),sin(slave.robot_poses(3,slave.robots_in_contact_ids)))
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s, zeros(2,1), 0)
             else
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s, v_obj_des, omega_obj_des)
@@ -85,7 +86,8 @@ if (true)
             % this needs some logic, e.g. if (contact changed || object pose changed)
             slave.set_theta_hinge(i, slave.robot_poses(3,i))
         end
-        % slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_(1:2,3));
+        [robot_idcs, contact_points, ~] = obj.check_contact(slave.robot_poses(1:2,:)', gcf);
+        slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_);
         
         slave.overwrite_poses(robot_integrated_positions)
         % slave.plot_bb([0,1,0]);
