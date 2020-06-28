@@ -203,6 +203,17 @@ classdef Slave < handle
             end
         end % get_A
         
+        function GTh = get_grasp_theta(this)
+            Theta = zeros(2*this.N, this.N);
+            for i = 1 : this.N
+                if ismember(i, this.robots_in_contact_ids)
+                    thetai = this.robot_poses(3,i);
+                    Theta(2*i-1:2*i, i) = [cos(thetai); sin(thetai)];
+                end
+            end
+            GTh = this.G * Theta;
+        end
+        
         % setters
         function set_theta_hinge(this, i, theta_hinge_i)
             this.theta_hinge(i) = theta_hinge_i;

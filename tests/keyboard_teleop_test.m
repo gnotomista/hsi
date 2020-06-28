@@ -1,3 +1,4 @@
+
 clc
 clear
 close all
@@ -8,6 +9,10 @@ slave_frames = [];
 t = 0:0.1:5;
 [a,s] = arclength(t(end),1,t');
 s = -2*s;
+s_max = 2;
+s_min = -2;
+v_obj_des_max = 3;
+omega_obj_des_max = 3;
 
 %% Slave
 slave = Slave('mat_files/all_data');
@@ -17,39 +22,49 @@ set(slave.robotarium_container.r.figure_handle,...
 load_environment
 obj = RigidBody([-.3 -0.3; -.3 0.3; 0.1 0.3; 0.3 -.2]);
 axis([-2 7 -2.5 5])
+set(gcf,'KeyPressFcn',@teleop);
 
 %% Main
+global keyPressed
+keyPressed = '';
 s = 0;
 if (true)
     while (true)
-        x = input("press some button", 's')
-        switch x
+        switch keyPressed
             case "e"
-                s = 2;
+                s = min(s_max,s+0.05);
                 v_obj_des = [0;0];
                 omega_obj_des = 0;
+                keyPressed = '';
             case "f"
-                s = -2;
+                s = max(s_min,s-0.05);
                 v_obj_des = [0;0];
                 omega_obj_des = 0;
+                keyPressed = '';
             case "d"
-                v_obj_des = [1;0];
+                v_obj_des = v_obj_des_max*[1;0];
                 omega_obj_des = 0;
+                keyPressed = '';
             case "a"
-                v_obj_des = [-1;0];
+                v_obj_des = v_obj_des_max*[-1;0];
                 omega_obj_des = 0;
+                keyPressed = '';
             case "w"
-                v_obj_des = [0;1];
-                omega_obj_des = 0;                
+                v_obj_des = v_obj_des_max*[0;1];
+                omega_obj_des = 0;
+                keyPressed = '';
             case "s"
-                v_obj_des = [0;-1];
-                omega_obj_des = 0;                
+                v_obj_des = v_obj_des_max*[0;-1];
+                omega_obj_des = 0;
+                keyPressed = '';
             case "z"
                 v_obj_des = [0;0];
-                omega_obj_des = 1;
-            case "x"    
+                omega_obj_des = omega_obj_des_max*1;
+                keyPressed = '';
+            case "x"
                 v_obj_des = [0;0];
-                omega_obj_des = -1;                
+                omega_obj_des = omega_obj_des_max*(-1);
+                keyPressed = '';
             otherwise
                 v_obj_des = [0;0];
                 omega_obj_des = 0;
@@ -60,8 +75,10 @@ if (true)
         if isempty(slave.G)
             slave.swarm_syn(SYN_ID, s)
         else
-            if size(null(slave.G),2) > 2*slave.N-3 ...
-                    || ~inpolygon(0,0,cos(slave.robot_poses(3,slave.robots_in_contact_ids)),sin(slave.robot_poses(3,slave.robots_in_contact_ids)))
+            % if size(null(slave.G),2) > 2*slave.N-3 ...
+            %         || ~inpolygon(0,0,cos(slave.robot_poses(3,slave.robots_in_contact_ids)),sin(slave.robot_poses(3,slave.robots_in_contact_ids)))
+            positive_span(slave.get_grasp_theta(), 3)
+            if ~positive_span(slave.get_grasp_theta(), 3)
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s, zeros(2,1), 0)
             else
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s, v_obj_des, omega_obj_des)
@@ -113,3 +130,15 @@ else % if (SIMULATED_MASTER)
     % end
 end
 
+function b = positive_span(A,n)
+b = true;
+for i = 1 : size(A,2)
+    Ai = A; Ai(:,i) = [];
+    b = b && (rank(Ai)==n);
+end
+end
+
+function teleop(src, event)
+global keyPressed
+keyPressed = event.Key;
+end
