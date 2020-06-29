@@ -18,7 +18,7 @@ omega_obj_des_max = 3;
 slave = Slave('mat_files/all_data');
 slave.set_max_iter(1);
 set(slave.robotarium_container.r.figure_handle,...
-    'units','normalized','position',[.5 .2 .45 .6])
+    'units','normalized','position',[0 0 1 1])
 load_environment
 obj = RigidBody([-.3 -0.3; -.3 0.3; 0.1 0.3; 0.3 -.2]);
 axis([-2 7 -2.5 5])
@@ -77,7 +77,6 @@ if (true)
         else
             % if size(null(slave.G),2) > 2*slave.N-3 ...
             %         || ~inpolygon(0,0,cos(slave.robot_poses(3,slave.robots_in_contact_ids)),sin(slave.robot_poses(3,slave.robots_in_contact_ids)))
-            positive_span(slave.get_grasp_theta(), 3)
             if ~positive_span(slave.get_grasp_theta(), 3)
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s, zeros(2,1), 0)
             else
@@ -103,10 +102,12 @@ if (true)
             % this needs some logic, e.g. if (contact changed || object pose changed)
             slave.set_theta_hinge(i, slave.robot_poses(3,i))
         end
+        
+        slave.overwrite_poses(robot_integrated_positions)
+        
         [robot_idcs, contact_points, ~] = obj.check_contact(slave.robot_poses(1:2,:)', gcf);
         slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_);
         
-        slave.overwrite_poses(robot_integrated_positions)
         % slave.plot_bb([0,1,0]);
         
         gcf;

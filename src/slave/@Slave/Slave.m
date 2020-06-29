@@ -20,7 +20,7 @@ classdef Slave < handle
         h_bouding_box
     end % public properties
     
-    properties (Access=private)
+    properties %(Access=private) % TODO: commented during testing
         weights_mean
         weights
         EPS_DX
@@ -120,7 +120,7 @@ classdef Slave < handle
                 for i = 1 : this.N
                     if ismember(i, this.robots_in_contact_ids)
                         goc = eye(3);
-                        goc(1:2,3) = obj_centroid(1:2, 1:2)'*(contact_points(:,i) - obj_centroid(1:2,3));
+                        goc(1:2,3) = [cos(this.robot_poses(3,i)) sin(this.robot_poses(3,i)); -sin(this.robot_poses(3,i)) cos(this.robot_poses(3,i))]*obj_centroid(1:2, 1:2)'*(contact_points(:,i) - obj_centroid(1:2,3));
                         this.G(:, 2*i-1:2*i) = gi(inv(goc));
                     end
                 end
