@@ -11,8 +11,8 @@ t = 0:0.1:5;
 s = -2*s;
 s_max = 2;
 s_min = -2;
-v_obj_des_max = 3;
-omega_obj_des_max = 3;
+v_obj_des_max = 10;
+omega_obj_des_max = 10;
 
 %% Slave
 slave = Slave('mat_files/all_data');
@@ -77,7 +77,7 @@ if (true)
         else
             % if size(null(slave.G),2) > 2*slave.N-3 ...
             %         || ~inpolygon(0,0,cos(slave.robot_poses(3,slave.robots_in_contact_ids)),sin(slave.robot_poses(3,slave.robots_in_contact_ids)))
-            if ~positive_span(slave.get_grasp_theta(), 3)
+            if ~positive_span(slave.get_grasp_theta(), 3) % can be substituted by "if the des obj vel is not in the positive span"
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s, zeros(2,1), 0)
             else
                 slave.swarm_syn_and_opt_obj_manip(SYN_ID, s, v_obj_des, omega_obj_des)
@@ -105,13 +105,13 @@ if (true)
         
         slave.overwrite_poses(robot_integrated_positions)
         
-        [robot_idcs, contact_points, ~] = obj.check_contact(slave.robot_poses(1:2,:)', gcf);
-        slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_);
+%         [robot_idcs, contact_points, ~] = obj.check_contact(slave.robot_poses(1:2,:)', gcf);
+%         slave.update_grasp_matrix(robot_idcs, contact_points, obj.o_);
         
         % slave.plot_bb([0,1,0]);
         
-        gcf;
-        slave_frames = [slave_frames, getframe(gcf)];
+%         gcf;
+%         slave_frames = [slave_frames, getframe(gcf)];
         % force feedback to master
         % ---------------------------------------------------------- ACTUAL
         % master.set_forces(forces) % or show_forces(forces)

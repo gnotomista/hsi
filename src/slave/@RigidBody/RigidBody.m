@@ -6,8 +6,8 @@ classdef RigidBody < matlab.mixin.Copyable
         shape_              % object shape
         vertices_b_         % vertices in body frame
         o_ = eye(3);        % center of mass pose
-        mass_ = 1;          % mass
-        I_ = 1;             % body inertia
+        mass_ = 0.1;          % mass
+        I_ = 0.1;             % body inertia
         contacts_ = [];     % list of contacts in body frame
         Mb_ = zeros(3,3);   % body mass matrix
         G_ = [];            % grasp matrix
