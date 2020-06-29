@@ -105,6 +105,8 @@ classdef Slave < handle
                 % (b) robots in contact are controlled also by the synergies
                 this.u = this.u + du_nom;
             end
+            theta = this.robot_poses(3,:);
+            this.v = this.u(1,:).*[cos(theta); sin(theta)];
         end % swarm_syn_and_opt_obj_manip
         
         function G = update_grasp_matrix(this, robot_idcs, contact_points, obj_centroid)

@@ -93,7 +93,7 @@ if (true)
         obj.set_contact_points(contact_points);  % set object contact points
         
         % integrate object and restore robot positions
-        contact_points_integrated_positions = obj.step(robot_idcs, slave.v, 5, 0); % this can easily simulate non-operational robots
+        contact_points_integrated_positions = obj.step(robot_idcs, slave.v, 10, 0); % this can easily simulate non-operational robots
         robot_integrated_positions = slave.robot_poses;
         robot_integrated_positions(1:2, robot_idcs) = contact_points_integrated_positions(:, robot_idcs);
         robot_integrated_positions = slave.check_robot_collisions(robot_integrated_positions);
