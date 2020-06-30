@@ -44,8 +44,8 @@ classdef Slave < handle
             this.max_iter = 10;
             this.optimparam.optimoptions = optimoptions(@quadprog, 'Display', 'off');
             this.optimparam.kappa = 1;
-            this.optimparam.H = diag([ones(1,this.N) this.optimparam.kappa*ones(1,this.N)]);
-            this.optimparam.f = zeros(1,2*this.N);
+            this.optimparam.H = diag([ones(1,this.N) this.optimparam.kappa*ones(1,this.N) 1e3]);
+            this.optimparam.f = [zeros(1,2*this.N) 0];
             this.optimparam.theta_max = pi;
             this.optimparam.V = @(th, th_hinge) (th-th_hinge)^2;
             this.optimparam.h = @(th, th_hinge) this.optimparam.theta_max^2 - (th-th_hinge)^2;
@@ -73,33 +73,37 @@ classdef Slave < handle
             this.v = this.u(1,:).*[cos(theta); sin(theta)];
         end % swarm_syn
         
-        function opt_obj_manip(this, v_obj_des, omega_obj_des)
+        function opt_obj_manip(this, v_obj_des, omega_obj_des, Ro)
             Theta = zeros(2*this.N, this.N);
-            Aineq = zeros(2*this.N, 2*this.N); % (N CLFs + N CBFs) x (N v + N omega)
+            Aineq = zeros(2*this.N, 2*this.N+1); % (N CLFs + N CBFs) x (N v + N omega)
             bineq = zeros(2*this.N, 1);
             for i = 1 : this.N
                 if ismember(i, this.robots_in_contact_ids)
                     thetai = this.robot_poses(3,i);
-                    Theta(2*i-1:2*i, i) = [cos(thetai); sin(thetai)];
-                    Aineq(i, this.N+i) = this.optimparam.dV_dth(thetai, this.theta_hinge(i));
-                    bineq(i) = -this.optimparam.alpha(this.optimparam.V(thetai, this.theta_hinge(i)));
-                    Aineq(this.N+i, this.N+i) = -this.optimparam.dh_dth(thetai, this.theta_hinge(i));
-                    bineq(this.N+i) = this.optimparam.alpha(this.optimparam.h(thetai, this.theta_hinge(i)));
+                    Theta(2*i-1:2*i, i) = Ro'*[cos(thetai); sin(thetai)];
+%                     Aineq(i, this.N+i) = this.optimparam.dV_dth(thetai, this.theta_hinge(i));
+%                     bineq(i) = -this.optimparam.alpha(this.optimparam.V(thetai, this.theta_hinge(i)));
+%                     Aineq(this.N+i, this.N+i) = -this.optimparam.dh_dth(thetai, this.theta_hinge(i));
+%                     bineq(this.N+i) = this.optimparam.alpha(this.optimparam.h(thetai, this.theta_hinge(i)));
                 end
             end
-            Aeq = [this.G * Theta, zeros(3, this.N)];
-            beq = [v_obj_des; omega_obj_des];
-            v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1)], inf(2*this.N,1), [], this.optimparam.optimoptions);
-            this.u = reshape(v_omega',this.N,2)';
+            Aeq = [this.G * Theta, zeros(3, this.N) ones(3,1)];
+            beq = [Ro'*v_obj_des; omega_obj_des];
+            [v_omega, ~, exit_flag] = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1); -inf], inf(2*this.N+1,1), [], this.optimparam.optimoptions);
+            if exit_flag < 0
+                exit_flag
+                v_omega = zeros(2*this.N+3,1);
+            end
+            this.u = reshape(v_omega(1:2*this.N)',this.N,2)';
             theta = this.robot_poses(3,:);
             this.v = this.u(1,:).*[cos(theta); sin(theta)];
         end % opt_obj_manip
         
-        function swarm_syn_and_opt_obj_manip(this, syn_id, syn_val, v_obj_des, omega_obj_des)
+        function swarm_syn_and_opt_obj_manip(this, syn_id, syn_val, v_obj_des, omega_obj_des, Ro)
             this.swarm_syn(syn_id, syn_val);
             du_nom = this.u;
             if this.robots_in_contact_num > 0
-                this.opt_obj_manip(v_obj_des, omega_obj_des);
+                this.opt_obj_manip(v_obj_des, omega_obj_des, Ro);
                 % (a) robots in contact are not controlled by the synergies
                 % this.u(:,setdiff(1:this.N,this.robots_in_contact_ids)) = du_nom(:,setdiff(1:this.N,this.robots_in_contact_ids));
                 % (b) robots in contact are controlled also by the synergies
@@ -122,7 +126,7 @@ classdef Slave < handle
                 for i = 1 : this.N
                     if ismember(i, this.robots_in_contact_ids)
                         goc = eye(3);
-                        goc(1:2,3) = [cos(this.robot_poses(3,i)) sin(this.robot_poses(3,i)); -sin(this.robot_poses(3,i)) cos(this.robot_poses(3,i))]*obj_centroid(1:2, 1:2)'*(contact_points(:,i) - obj_centroid(1:2,3));
+                        goc(1:2,3) = obj_centroid(1:2, 1:2)'*(contact_points(:,i) - obj_centroid(1:2,3));
                         this.G(:, 2*i-1:2*i) = gi(inv(goc));
                     end
                 end
@@ -205,12 +209,12 @@ classdef Slave < handle
             end
         end % get_A
         
-        function GTh = get_grasp_theta(this)
+        function GTh = get_grasp_theta(this, Ro)
             Theta = zeros(2*this.N, this.N);
             for i = 1 : this.N
                 if ismember(i, this.robots_in_contact_ids)
                     thetai = this.robot_poses(3,i);
-                    Theta(2*i-1:2*i, i) = [cos(thetai); sin(thetai)];
+                    Theta(2*i-1:2*i, i) = Ro'*[cos(thetai); sin(thetai)];
                 end
             end
             GTh = this.G * Theta;

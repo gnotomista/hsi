@@ -14,8 +14,8 @@ classdef RigidBody < matlab.mixin.Copyable
         t_ = [];            % body twist
         a_ = [];            % body acceleration
         Fb_ = [];           % body wrench
-        dt_ = 0.005;         % integration time step
-        b_ = 10;            % damping coefficient
+        dt_ = 0.01;         % integration time step
+        b_ = 1;            % damping coefficient
         kp_ = 1;            % force gain
         
         % handles
