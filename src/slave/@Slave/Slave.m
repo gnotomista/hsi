@@ -42,7 +42,8 @@ classdef Slave < handle
             this.EPS_DX = 0.05;
             this.FORMATION_CONTROL_GAIN = 10;
             this.max_iter = 10;
-            this.optimparam.optimoptions = optimoptions(@quadprog, 'Display', 'off');
+            this.optimparam.optimoptions_quadprog = optimoptions(@quadprog, 'Display', 'off');
+            this.optimparam.optimoptions_lsqlin = optimoptions(@lsqlin,'Display','off');
             this.optimparam.kappa = 1;
             this.optimparam.H = diag([eye(1,this.N) this.optimparam.kappa*ones(1,this.N) 1e3]);
             this.optimparam.f = [zeros(1,2*this.N) 0];
@@ -51,7 +52,7 @@ classdef Slave < handle
             this.optimparam.h = @(th, th_hinge) this.optimparam.theta_max^2 - (th-th_hinge)^2;
             this.optimparam.dV_dth = @(th, th_hinge) 2*(th-th_hinge);
             this.optimparam.dh_dth = @(th, th_hinge) -2*(th-th_hinge);
-            this.optimparam.alpha = @(s) s;
+            this.optimparam.alpha = @(s) 10*s;
             this.G = [];
             this.bouding_box_radius = 0.08;
         end % Slave (constructor)
@@ -74,19 +75,8 @@ classdef Slave < handle
         end % swarm_syn
         
         function exit_flag = opt_obj_manip(this, v_obj_des, omega_obj_des, Ro)
-            Theta = zeros(2*this.N, this.N);
-            Aineq = zeros(2*this.N+1, 2*this.N+1);
+            Aineq = zeros(2*this.N+1, 2*this.N+2); % 2 slack variables: 1 for grasp matrix and 1 for manipulability measure
             bineq = zeros(2*this.N+1, 1);
-            % build Theta matrix
-            for i = 1 : this.N
-                if ismember(i, this.robots_in_contact_ids)
-                    thetai = this.robot_poses(3,i);
-                    Theta(2*i-1:2*i, i) = Ro'*[cos(thetai); sin(thetai)];
-                end
-            end
-            GT = this.G*Theta;
-            % space_inside_polyhedron = this.score_manip(GT(:,this.robots_in_contact_ids)); % TODO test
-            V = this.repulsive_potential(GT);
             for i = 1 : this.N
                 if ismember(i, this.robots_in_contact_ids)
                     % hinge constraints
@@ -95,34 +85,24 @@ classdef Slave < handle
                     % Aineq(this.N+i, this.N+i) = -this.optimparam.dh_dth(thetai, this.theta_hinge(i));
                     % bineq(this.N+i) = this.optimparam.alpha(this.optimparam.h(thetai, this.theta_hinge(i)));
                     % manipulability constraints
-                    dV_dthetai = 0;
-                    thetai = this.robot_poses(3,i);
-                    Thetai = Theta;
-                    Thetai(2*i-1:2*i, i) = Ro'*[cos(thetai+1e-2); sin(thetai+1e-2)];
-                    DeltaV = this.repulsive_potential(this.G*Thetai) - V;
-                    DeltaThetai = 1e-2;
-                    for j = i+1 : this.N
-                        if ismember(j, this.robots_in_contact_ids)
-                            dV_dthetai = dV_dthetai + DeltaV/DeltaThetai;
-                        end
-                    end
-                    Aineq(2*this.N+1, this.N+i) = dV_dthetai;
-                    bineq(2*this.N+1) = -10*this.optimparam.alpha(V);
                 end
             end
-            Aeq = [this.G * Theta, zeros(3, this.N), ones(3,1)];
+            GT = this.G*this.Theta(this.robot_poses(3,:),Ro);
+            Aineq(2*this.N+1, this.N+1:2*this.N) = this.manipulability_gradient(GT, Ro);
+            bineq(2*this.N+1) = -this.optimparam.alpha(this.manipulability_potential(GT));
+            Aeq = [GT, zeros(3, this.N), ones(3,1)];
             beq = [Ro'*v_obj_des; omega_obj_des];
             % v and omega together ...
-            % v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1); -inf], inf(2*this.N+1,1), [], this.optimparam.optimoptions);
+            % v_omega = quadprog(this.optimparam.H, this.optimparam.f, Aineq, bineq, Aeq, beq, [zeros(this.N,1); -inf(this.N,1); -inf], inf(2*this.N+1,1), [], this.optimparam.optimoptions_quadprog);
             % this.u = reshape(v_omega(1:2*this.N),this.N,2)';
             % ... or separately to otimize manipulability
-            [input_v, ~, exit_flag] = quadprog(eye(this.N), zeros(1,this.N), [], [], Aeq(:,1:this.N), beq, zeros(this.N,1), [], [], this.optimparam.optimoptions);
+            [input_v, ~, exit_flag] = quadprog(eye(this.N), zeros(1,this.N), [], [], Aeq(:,1:this.N), beq, zeros(this.N,1), [], [], this.optimparam.optimoptions_quadprog);
             if exit_flag < 0
                 input_v = zeros(this.N,1);
             end
-            input_omega = quadprog(eye(this.N), zeros(1,this.N), Aineq(2*this.N+1,this.N+1:end-1), bineq(2*this.N+1), [], [], [], [], [], this.optimparam.optimoptions);
+            input_omega = quadprog(blkdiag(eye(this.N),1e3), [zeros(1,this.N) 0], Aineq(2*this.N+1,[this.N+1:2*this.N,2*this.N+2]), bineq(2*this.N+1), [], [], [], [], [], this.optimparam.optimoptions_quadprog);
             this.u = [input_v';
-                input_omega'];
+                input_omega(1:this.N)'];
             theta = this.robot_poses(3,:);
             this.v = this.u(1,:).*[cos(theta); sin(theta)];
         end % opt_obj_manip
@@ -136,8 +116,9 @@ classdef Slave < handle
                 % (a) robots in contact are not controlled by the synergies
                 % this.u(:,setdiff(1:this.N,this.robots_in_contact_ids)) = du_nom(:,setdiff(1:this.N,this.robots_in_contact_ids));
                 % (b) robots in contact are controlled also by the synergies
-                % this.u = this.u + du_nom;
-                this.u = this.u + 0.5*du_nom; % TODO: test weighted average
+                this.u = this.u + du_nom;
+                % (c) robots in contact are controlled also by the synergies but with lower weightsynergies
+                % this.u = this.u + 0.5*du_nom; % TODO: test weighted average
             end
             theta = this.robot_poses(3,:);
             this.v = this.u(1,:).*[cos(theta); sin(theta)];
@@ -307,26 +288,43 @@ classdef Slave < handle
             this.robotarium_container.si_to_uni_dyn = create_si_to_uni_dynamics();
         end % initialize_robotarium
         
+        function V = manipulability_potential(this, p)
+            V = 1e1 - this.score_manip(p);
+        end % repulsive_potential
+        
+        function DV = manipulability_gradient(this, t, Ro)
+            DV = zeros(1,this.N);
+            for i = 1 : this.N
+                ti_plus = t;
+                ti_minus = t;
+                ti_plus(i) = ti_plus(i) + 1e-4;
+                ti_minus(i) = ti_minus(i) - 1e-4;
+                DV(i) = (this.manipulability_potential(this.G*this.Theta(ti_plus, Ro))-this.manipulability_potential(this.G*this.Theta(ti_minus, Ro))) / 2e-4;
+            end
+        end % manipulability_gradient
+        
         function d = score_manip(this, p)
             m = size(p, 1);
-            [A, b, Aeq, beq] = vert2lcon(p');
-            closestpoint = lsqlin(speye(m), zeros(m,1), A, b, Aeq, beq, [], [], [], this.optimparam.optimoptions);
-            d = norm(closestpoint);
+            [A, b, ~, ~] = vert2lcon(p');
             if all(b>0) % 0 is inside the polyhedron
-                d = abs(d);
+                d = inf;
+                for i = 1 : size(A,1)
+                    d = min(d, abs(b(i))/norm(A(i,:)));
+                end
             else
-                d = -abs(d);
+                d = -norm(lsqlin(speye(m), zeros(m,1), A, b, [], [], [], [], [], this.optimparam.optimoptions_lsqlin));
             end
         end % score_manip
         
-        function V = repulsive_potential(this, GT_contact)
-            V = 0;
-            for i = 1 : size(GT_contact,2)
-                for j = i+1 : size(GT_contact,2)
-                    V = V + 1/(norm(GT_contact(:,i)-GT_contact(:,j))+1);
+        function T = Theta(this, t, Ro)
+            T = zeros(2*this.N,this.N);
+            for i = 1 : this.N
+                if ismember(i, this.robots_in_contact_ids)
+                    thetai = t(i);
+                    T(2*i-1:2*i, i) = Ro'*[cos(thetai); sin(thetai)];
                 end
             end
-        end
+        end % Theta
     end % private methods
     
 end % class

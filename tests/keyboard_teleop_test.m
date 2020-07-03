@@ -10,8 +10,8 @@ t = 0:0.1:5;
 s = -2*s;
 s_max = 2;
 s_min = -2;
-v_obj_des_max = 20;
-omega_obj_des_max = 20;
+v_obj_des_max = 8;
+omega_obj_des_max = 8;
 
 %% Slave
 slave = Slave('mat_files/all_data');
@@ -60,6 +60,14 @@ if (true)
             case "x"
                 v_obj_des = [0;0];
                 omega_obj_des = omega_obj_des_max*(-1);
+            case "uparrow"
+                v_obj_des_max = v_obj_des_max * 2;
+                omega_obj_des_max = omega_obj_des_max * 2;
+                keyPressed = '';
+            case "downarrow"
+                v_obj_des_max = v_obj_des_max / 2;
+                omega_obj_des_max = omega_obj_des_max / 2;
+                keyPressed = '';
         end
         
         % position feedforward to slave
